@@ -1,0 +1,16 @@
+_BASE_: "../Base-RCNN-FPN.yaml"
+MODEL:
+  WEIGHTS: "checkpoints/base/coco/model_final.pth"
+  MASK_ON: False
+  RESNETS:
+    DEPTH: 101
+  ROI_HEADS:
+    NUM_CLASSES: 60
+DATASETS:
+  TRAIN: ('coco_trainval_base',)
+  TEST: ('coco_test_base',)
+SOLVER:
+  IMS_PER_BATCH: 16
+  STEPS: (85000, 100000)
+  MAX_ITER: 110000
+OUTPUT_DIR: "checkpoints/base/coco"

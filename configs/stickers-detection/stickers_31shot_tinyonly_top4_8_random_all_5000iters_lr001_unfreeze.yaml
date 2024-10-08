@@ -1,0 +1,28 @@
+_BASE_: "../Base-RCNN-FPN.yaml"
+MODEL:
+# checkpoints/stickers/stickers_31shot_tinyonly_top4_8_random_all_5000iters_lr001_unfreeze/checkpoint
+  WEIGHTS: "checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot_tinyonly_top4classes/model_reset_surgery.pth"
+  MASK_ON: False
+  RESNETS:
+    DEPTH: 101
+  ROI_HEADS:
+    NUM_CLASSES: 5
+    OUTPUT_LAYER: "CosineSimOutputLayers"
+ #   FREEZE_FEAT: True
+ # BACKBONE:
+ #   FREEZE: True
+ # PROPOSAL_GENERATOR:
+ #   FREEZE: True
+DATASETS:
+  #TRAIN: ('30_tinyonly',)
+  TRAIN: ('tinyonly_top4_stickers_31shot_1400', '30_tinyonly_top4')
+  TEST: ('stickers_31shot_1400_test',)
+SOLVER:
+  IMS_PER_BATCH: 8
+  BASE_LR: 0.001
+  STEPS: (216000,)
+  MAX_ITER: 5000
+  CHECKPOINT_PERIOD: 3000
+  WARMUP_ITERS: 10
+# checkpoints/stickers/stickers_31shot_tinyonly_top4_8_random_all_5000iters_lr001_unfreeze/checkpoint
+OUTPUT_DIR: "checkpoints/stickers/stickers_31shot_tinyonly_top4_8_random_all_5000iters_lr001_unfreeze"
