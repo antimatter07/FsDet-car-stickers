@@ -40,6 +40,7 @@ def load_stickers_json(json_file, image_root, metadata, dataset_name):
     # "novel_dataset_id_to_contiguous_id", "tinyonly_stickers_id_to_contiguous_id"
 
     # tinyonly_top4_stickers_id_to_contiguous_id
+    print("DATASET STICKERS: " + dataset_name)
     if is_top4:
         IDMAP = metadata["tinyonly_top4_stickers_id_to_contiguous_id"]
     elif is_tinyonly:

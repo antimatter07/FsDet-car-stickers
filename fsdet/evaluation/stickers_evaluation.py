@@ -215,8 +215,8 @@ class CarStickerEvaluator(DatasetEvaluator):
         #FOR NOW HANDLE CORRECT MAPPINGS FOR EACH DATASET BY MANUALLY CHANGING LINE BELOW
         #  "tinyonly_top4_stickers_id_to_contiguous_id"
         
-        #IDMAP = metadata.tinyonly_stickers_id_to_contiguous_id
-        IDMAP = metadata.tinyonly_top4_stickers_id_to_contiguous_id
+        IDMAP = metadata.tinyonly_stickers_id_to_contiguous_id
+        #IDMAP = metadata.tinyonly_top4_stickers_id_to_contiguous_id
         
         inverse_IDMAP = {v: k for k, v in IDMAP.items()}
 
