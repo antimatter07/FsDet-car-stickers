@@ -215,8 +215,8 @@ class CarStickerEvaluator(DatasetEvaluator):
         #FOR NOW HANDLE CORRECT MAPPINGS FOR EACH DATASET BY MANUALLY CHANGING LINE BELOW
         #  "tinyonly_top4_stickers_id_to_contiguous_id"
         
-        IDMAP = metadata.tinyonly_stickers_id_to_contiguous_id
-        #IDMAP = metadata.tinyonly_top4_stickers_id_to_contiguous_id
+        #IDMAP = metadata.tinyonly_stickers_id_to_contiguous_id
+        IDMAP = metadata.tinyonly_top4_stickers_id_to_contiguous_id
         
         inverse_IDMAP = {v: k for k, v in IDMAP.items()}
 
@@ -228,7 +228,7 @@ class CarStickerEvaluator(DatasetEvaluator):
 
             if prediction["image_id"] not in processed_image_ids:
                 # Add ground truth annotations only if the image ID hasn't been processed yet
-                gt_annotations.extend(get_ground_truth_annotations(prediction["image_id"]))
+                #gt_annotations.extend(get_ground_truth_annotations(prediction["image_id"]))
                 processed_image_ids.add(prediction["image_id"])  # Add the image ID to the set of processed IDs
             # remap to original category id
             prediction['category_id'] = inverse_IDMAP[prediction['category_id']]
@@ -251,12 +251,13 @@ class CarStickerEvaluator(DatasetEvaluator):
             coco_gt = COCO(json_file)
 
         _evaluate_predictions_on_coco(coco_gt, pred_annotations, 'bbox')
-     
-        gt_dataset = annotations_to_coco(gt_annotations)
+
+        #comment for now since calculating of AP is done on a separate script 
+        #gt_dataset = annotations_to_coco(gt_annotations)
 
 
 
-    
+        gt_dataset = None 
         
         
 
