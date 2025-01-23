@@ -63,9 +63,9 @@ class CarStickerEvaluator(DatasetEvaluator):
                         "bbox": coco_box,  
                         "score": float(score),  
                     }
-                    print('processed instance: ',prediction_item)
+                    #print('processed instance: ',prediction_item)
                     self._predictions.append(prediction_item)
-            print("Processed prediction:", prediction)
+            #print("Processed prediction:", prediction)
 
     def evaluate(self):
         if self._distributed:
@@ -113,8 +113,15 @@ class CarStickerEvaluator(DatasetEvaluator):
         # reverse ID map for 60 base classes + 1 novel (car-sticker), car-sticker is category-id = 91
         metadata = self._metadata
         print('DATASET_NAME:', self._dataset_name)
-        is_tiny_only = "tinyonly" in self._dataset_name
-        
+        is_tinyonly = "tinyonly" in self._dataset_name
+        is_top4 = "top4" in self._dataset_name
+
+        if is_top4:
+            IDMAP = metadata.tinyonly_top4_stickers_id_to_contiguous_id
+        elif is_tinyonly:
+            IDMAP = metadata.tinyonly_stickers_id_to_contiguous_id
+        else:
+            IDMAP = metadata.novel_dataset_id_to_contiguous_id
       
         
       #  if is_tiny_only:
@@ -126,7 +133,11 @@ class CarStickerEvaluator(DatasetEvaluator):
         #  "tinyonly_top4_stickers_id_to_contiguous_id"
         
         #IDMAP = metadata.tinyonly_stickers_id_to_contiguous_id
-        IDMAP = metadata.tinyonly_top4_stickers_id_to_contiguous_id
+        #IDMAP = metadata.tinyonly_top4_stickers_id_to_contiguous_id
+
+       
+
+        
         
         inverse_IDMAP = {v: k for k, v in IDMAP.items()}
 
