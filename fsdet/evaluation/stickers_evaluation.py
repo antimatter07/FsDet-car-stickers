@@ -195,10 +195,10 @@ class CarStickerEvaluator(DatasetEvaluator):
         coco_eval.accumulate()
         coco_eval.summarize()
         
-        #output_file = "coco_eval_results.txt"
-        #with open(output_file, "w") as f:
-         #   with contextlib.redirect_stdout(f):  # Redirect only within this block
-         #       coco_eval.summarize()
+        output_file = "coco_eval_results.txt"
+        with open(output_file, "w") as f:
+            with contextlib.redirect_stdout(f):  # Redirect only within this block
+                coco_eval.summarize()
 
 
         
