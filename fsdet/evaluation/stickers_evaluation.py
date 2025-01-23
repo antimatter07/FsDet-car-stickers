@@ -173,18 +173,29 @@ class CarStickerEvaluator(DatasetEvaluator):
             f.write(predictions_json)
 
          #load ground truth
-        json_file = PathManager.get_local_path(self._metadata.json_file)
-        with contextlib.redirect_stdout(io.StringIO()):
-            coco_gt = COCO(json_file)
+        #with open(file_path, 'r') as f:
+        #    gt_data = json.load(self._json_file)
+            
+        
+        #with contextlib.redirect_stdout(io.StringIO()):
+         #   coco_gt = COCO(json_file)
 
-        _evaluate_predictions_on_coco(coco_gt, pred_annotations, 'bbox')
+        #_evaluate_predictions_on_coco(coco_gt, pred_annotations, 'bbox')
 
         #comment for now since calculating of AP is done on a separate script 
         #gt_dataset = annotations_to_coco(gt_annotations)
+        coco_gt = COCO(self._json_file)
+        
+        coco_gt.createIndex()
+        coco_pred = coco_gt.loadRes(predictions_json)
+        
+        coco_eval = COCOeval(coco_gt, coco_pred, 'bbox')
+        
+        coco_eval.evaluate()
+        coco_eval.accumulate()
+        coco_eval.summarize()
 
 
-
-        gt_dataset = None 
         
         
 
