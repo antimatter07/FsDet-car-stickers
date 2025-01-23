@@ -34,6 +34,9 @@ class CarStickerEvaluator(DatasetEvaluator):
         self._logger = logging.getLogger(__name__)
 
         self._metadata = MetadataCatalog.get(dataset_name) 
+        
+        json_file = PathManager.get_local_path(self._metadata.json_file)
+        self._json_file = json_file
 
     def reset(self):
         self._predictions = []
@@ -113,9 +116,12 @@ class CarStickerEvaluator(DatasetEvaluator):
         # reverse ID map for 60 base classes + 1 novel (car-sticker), car-sticker is category-id = 91
         metadata = self._metadata
         print('DATASET_NAME:', self._dataset_name)
+        print('JSON_FILE: ', self._json_file)
+        
         is_tinyonly = "tinyonly" in self._dataset_name
         is_top4 = "top4" in self._dataset_name
 
+        #make sure mapping of contiguous to stickers is correct according to training set up (top 4, tiny only, or 60 + 1)
         if is_top4:
             IDMAP = metadata.tinyonly_top4_stickers_id_to_contiguous_id
         elif is_tinyonly:
