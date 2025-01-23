@@ -99,12 +99,12 @@ class CarStickerEvaluator(DatasetEvaluator):
         return copy.deepcopy(self._results)
 
     def _eval_predictions(self):
-        gt_dataset, pred_annotations = self._prepare_annotations()
+        self._prepare_annotations()
 
         
     
-        self._results.update(ap_result)
-        self._logger.info("Car sticker evaluation results: {}".format(self._results))
+        #self._results.update(ap_result)
+        #self._logger.info("Car sticker evaluation results: {}".format(self._results))
 
     
 
@@ -174,32 +174,37 @@ class CarStickerEvaluator(DatasetEvaluator):
 
          #load ground truth
         #with open(file_path, 'r') as f:
-        #    gt_data = json.load(self._json_file)
+         #   gt_data = json.load(self._json_file)
             
         
         #with contextlib.redirect_stdout(io.StringIO()):
          #   coco_gt = COCO(json_file)
 
-        #_evaluate_predictions_on_coco(coco_gt, pred_annotations, 'bbox')
+        
 
         #comment for now since calculating of AP is done on a separate script 
-        #gt_dataset = annotations_to_coco(gt_annotations)
+
         coco_gt = COCO(self._json_file)
         
         coco_gt.createIndex()
-        coco_pred = coco_gt.loadRes(predictions_json)
+        coco_pred = coco_gt.loadRes(file_path)
         
         coco_eval = COCOeval(coco_gt, coco_pred, 'bbox')
         
         coco_eval.evaluate()
         coco_eval.accumulate()
         coco_eval.summarize()
+        
+        #output_file = "coco_eval_results.txt"
+        #with open(output_file, "w") as f:
+         #   with contextlib.redirect_stdout(f):  # Redirect only within this block
+         #       coco_eval.summarize()
 
 
         
         
 
-        return gt_dataset, pred_annotations
+        #return gt_dataset, pred_annotations
 
 
 
