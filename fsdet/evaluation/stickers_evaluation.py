@@ -98,102 +98,12 @@ class CarStickerEvaluator(DatasetEvaluator):
     def _eval_predictions(self):
         gt_dataset, pred_annotations = self._prepare_annotations()
 
-        num_classes = 1  # Assuming there's only one class (car sticker)
-
-        # Initialize variables for true positives, false positives, and false negatives
-        tp = np.zeros(num_classes)
-        fp = np.zeros(num_classes)
-        fn = np.zeros(num_classes)
-    
-        # Matching predictions with ground truth
-        for image_id, pred_annotations_image in gt_dataset.items():
-            gt_annotations = gt_dataset.get(image_id, [])
-            
-            for pred in pred_annotations:
-                if pred['image_id'] == image_id:
-                    pred_bbox = pred['bbox']
-                    pred_class = pred['category_id']
-                    pred_score = pred['score']
-                    
-                    best_iou = 0
-                    best_gt_idx = -1
-                    
-                    for gt_idx, gt in enumerate(gt_annotations):
-                        if gt['category_id'] == pred_class:
-                            iou = self._calculate_iou(gt['bbox'], pred_bbox)
-                            if iou > best_iou:
-                                best_iou = iou
-                                best_gt_idx = gt_idx
-    
-                    if best_iou >= 0.5:
-                        if 'matched' in gt_annotations[best_gt_idx]:
-                            if not gt_annotations[best_gt_idx]['matched']:
-                                tp[0] += 1
-                                gt_annotations[best_gt_idx]['matched'] = True
-                        else:
-                            gt_annotations[best_gt_idx]['matched'] = True
-                            tp[0] += 1
-                    else:
-                        fp[0] += 1
-    
-            # Counting false negatives
-            for gt in gt_annotations:
-                if 'matched' in gt and not gt['matched']:
-                    fn[0] += 1
-    
-        # Computing precision, recall, and AP
-        precision = tp / (tp + fp)
-        recall = tp / (tp + fn)
-        ap = self._calculate_ap(precision, recall)
-    
-        # Displaying results
-        ap_result = {
-            "AP": ap * 100.0,
-        }
-        print("Car sticker evaluation results:")
-        print("Average Precision (AP): {:.2f}".format(ap_result["AP"]))
+        
     
         self._results.update(ap_result)
         self._logger.info("Car sticker evaluation results: {}".format(self._results))
 
-    def _calculate_iou(self, bbox1, bbox2):
-        x1, y1, w1, h1 = bbox1
-        x2, y2, w2, h2 = bbox2
-
-        # Calculate intersection coordinates
-        x_intersection = max(x1, x2)
-        y_intersection = max(y1, y2)
-        x_intersection_end = min(x1 + w1, x2 + w2)
-        y_intersection_end = min(y1 + h1, y2 + h2)
-
-        # Calculate intersection area
-        intersection_area = max(0, x_intersection_end - x_intersection) * max(0, y_intersection_end - y_intersection)
-
-        # Calculate union area
-        union_area = w1 * h1 + w2 * h2 - intersection_area
-
-        # Calculate IoU
-        iou = intersection_area / union_area
-
-        print("calculated iou: ", iou)
-
-        return iou
-
-    def _calculate_ap(self, precision, recall):
-        # Calculate AP using 11-point interpolation
-        recall_levels = np.linspace(0, 1, 11)
-        interpolated_precision = np.zeros_like(recall_levels)
-
-        for i, rl in enumerate(recall_levels):
-            precision_at_recall = precision[recall >= rl]
-            if precision_at_recall.size > 0:
-                interpolated_precision[i] = np.max(precision_at_recall)
-            else:
-                interpolated_precision[i] = 0
-
-        ap = np.mean(interpolated_precision)
-
-        return ap
+    
 
     def _prepare_annotations(self):
         gt_annotations = []
@@ -263,63 +173,8 @@ class CarStickerEvaluator(DatasetEvaluator):
 
         return gt_dataset, pred_annotations
 
-def get_ground_truth_annotations(image_id):
-    annotations = []
-    #few-shot-object-detection-0.1/datasets/stickers/annotations/stickers_28shot_test.json
-    # datasets/stickers_split/full_box_28shot_train.json
-    with open("datasets/stickers/annotations/stickers_28shot_test.json", "r") as json_file:
-        your_dataset_json = json.load(json_file)
-    for annotation in your_dataset_json["annotations"]:
-        if annotation["image_id"] == image_id:
-            x_min = annotation["bbox"][0]
-            y_min = annotation["bbox"][1]
-            width = annotation["bbox"][2]
-            height = annotation["bbox"][3]
-            #x_max = x_min + width
-           # y_max = y_min + height
-
-            annotations.append({
-                "image_id": annotation["image_id"],
-                "category_id": annotation["category_id"],
-                "bbox": [x_min, y_min, width, height],
-                "area": width * height,
-                "iscrowd": annotation["iscrowd"],
-                "segmentation": annotation["segmentation"],
-                "id": annotation["id"],
-            })
-    return annotations
-
-def annotations_to_coco(annotations):
-    coco_format_annotations = []
-    for annotation in annotations:
-        coco_format_annotation = {
-            "image_id": annotation["image_id"],
-            "category_id": annotation["category_id"],
-            "bbox": annotation["bbox"],
-            "id": annotation["id"],
-            "area": annotation["area"],
-            #"segmentation": annotation["segmentation"],
-            "iscrowd": annotation["iscrowd"],
-        }
-        print('anno id being appended: ', coco_format_annotation['id'])
-        coco_format_annotations.append(coco_format_annotation)
-        
-    with open("datasets/stickers/annotations/stickers_28shot_test.json", "r") as json_file:
-        your_dataset_json = json.load(json_file)
 
 
-    gt_dataset = {
-        "info": {},
-        "licenses": [],
-        "images": your_dataset_json["images"],
-        "annotations": coco_format_annotations,
-        "categories": [{"id": 1, "name": "car-sticker", "supercategory": "car-stickers"}],  
-    }
-
-
- 
-
-    return gt_dataset
 
 def _evaluate_predictions_on_coco(
         coco_gt, coco_results, iou_type, catIds=None
