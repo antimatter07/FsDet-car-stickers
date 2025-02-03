@@ -120,9 +120,13 @@ class CarStickerEvaluator(DatasetEvaluator):
         
         is_tinyonly = "tinyonly" in self._dataset_name
         is_top4 = "top4" in self._dataset_name
+        has_windshield = "ws" in dataset_name
 
-        #make sure mapping of contiguous to stickers is correct according to training set up (top 4, tiny only, or 60 + 1)
-        if is_top4:
+        #make sure mapping of contiguous to stickers is correct according to training set up (top 4, tiny only, or 60 + 1) 
+
+        if is_tinyonly and is_top4 and has_windshield:
+            IDMAP = metadata.tinyonly_top4_stickers_ws_id_to_contiguous_id
+        elif is_top4:
             IDMAP = metadata.tinyonly_top4_stickers_id_to_contiguous_id
         elif is_tinyonly:
             IDMAP = metadata.tinyonly_stickers_id_to_contiguous_id
