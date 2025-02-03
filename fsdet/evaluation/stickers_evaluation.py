@@ -120,7 +120,7 @@ class CarStickerEvaluator(DatasetEvaluator):
         
         is_tinyonly = "tinyonly" in self._dataset_name
         is_top4 = "top4" in self._dataset_name
-        has_windshield = "ws" in dataset_name
+        has_windshield = "ws" in self._dataset_name
 
         #make sure mapping of contiguous to stickers is correct according to training set up (top 4, tiny only, or 60 + 1) 
 
