@@ -316,3 +316,9 @@ register_meta_coco("30_tinyonly_top4",
 register_meta_stickers("datasets/stickers_split/stickers_train_31shot_1280.json", "datasets/stickers/stickers_train_31shot_1280", _get_builtin_metadata("stickers_fewshot"), "stickers_31shot_1280")
 register_meta_stickers("datasets/stickers_split/stickers_train_31shot_1280.json", "datasets/stickers/stickers_train_31shot_1280", _get_builtin_metadata("stickers_fewshot"), "tinyonly_stickers_31shot_1280")
 register_meta_stickers("datasets/stickers_split/stickers_train_31shot_1280.json", "datasets/stickers/stickers_train_31shot_1280", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_31shot_1280")
+
+#31shot 1280 with windshield class and annotations
+register_meta_stickers("datasets/stickers_split/stickers_ws_train_31shot_1280.json", "datasets/stickers/stickers_ws_train_31shot_1280", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_ws_31shot_1280")
+
+register_meta_stickers("datasets/stickers/annotations/stickers_ws_31shot_test_1280.json", "datasets/stickers/stickers_ws_test_31shot_1280", _get_builtin_metadata("stickers_fewshot"), "stickers_ws_31shot_1280_test_tinyonly_top4")
+
