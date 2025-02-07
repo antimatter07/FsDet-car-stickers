@@ -55,6 +55,7 @@ def parse_args():
     parser.add_argument('--tinyonly', action="store_true", help ="For tinyonly dataset (COCO)")
     parser.add_argument('--tinyonly_top4', action="store_true", help ="For tinyonly dataset with top 4 classes in terms of instance count in originl tinyonly dataset (COCO)")
     parser.add_argument('--tinyonly_top4_ws', action="store_true", help ="For tinyonly dataset with top 4 classes in terms of instance count in originl tinyonly dataset (COCO) and windshield class")
+    parser.add_argument('--stickers_ws', action="store_true", help ="For training only on stickers class and windhsield class")
     
     #ADDED ABOVE
     args = parser.parse_args()
@@ -84,7 +85,7 @@ def ckpt_surgery(args):
             torch.nn.init.normal_(new_weight, 0, 0.01)
         else:
             new_weight = torch.zeros(tar_size)
-        if args.coco or args.lvis or args.stickers or args.tinyonly or args.tinyonly_top4 or args.tinyonly_top4_ws:
+        if args.coco or args.lvis or args.stickers or args.tinyonly or args.tinyonly_top4 or args.tinyonly_top4_ws or args.stickers_ws:
             for i, c in enumerate(BASE_CLASSES):
                 idx = i if args.coco or args.stickers or args.tinyonly or args.tinyonly_top4 or args.tinyonly_top4_ws else c
 
@@ -145,7 +146,7 @@ def combine_ckpts(args):
             new_weight[:prev_cls] = pretrained_weight[:prev_cls]
 
         ckpt2_weight = ckpt2["model"][weight_name]
-        if args.coco or args.lvis or args.stickers or args.tinyonly or args.tinyonly_top4 or args.tinyonly_top4_ws:
+        if args.coco or args.lvis or args.stickers or args.tinyonly or args.tinyonly_top4 or args.tinyonly_top4_ws or args.stickers_ws:
             for i, c in enumerate(NOVEL_CLASSES):
                 if "cls_score" in param_name:
                     new_weight[IDMAP[c]] = ckpt2_weight[i]
@@ -287,6 +288,14 @@ if __name__ == "__main__":
         TAR_SIZE = 6
         #Mapping of COCO classes in tinyonly top 4 classes (in terms of instance count in classes) to original weight vector of base trained model 60 classes
         CONTIGUOUS_TINYONLY_TOP4_WINDSHIELD_TO_60BASE_MAPPING = {0: 1, 1: 18, 2: 19, 3: 59, 4: 60, 5: 61}
+    elif args.stickers_ws:
+        BASE_CLASSES = []
+        NOVEL_CLASSES = [91, 92,]
+        ALL_CLASSES = sorted(BASE_CLASSES + NOVEL_CLASSES)
+        IDMAP = {v: i for i, v in enumerate(ALL_CLASSES)}
+        TAR_SIZE = 2
+        
+        
         
         
     
