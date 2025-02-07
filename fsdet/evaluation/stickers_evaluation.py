@@ -47,14 +47,12 @@ class CarStickerEvaluator(DatasetEvaluator):
             if "instances" in output:
                 pred_instances = output["instances"]
                 
-                #CPU version of line below : boxes = pred_instances.pred_boxes.tensor.cpu().numpy()
+                # Get boxes, scores and classes on CPU
                 boxes = pred_instances.pred_boxes.tensor.cpu().numpy()
-                
-                #scores = pred_instances.scores.numpy()
                 scores = pred_instances.scores.cpu().numpy()
                 classes = pred_instances.pred_classes.cpu().numpy()
                 for box, score, cls in zip(boxes, scores, classes):
-                    # convert box to COCO format (x, y, width, height)
+                    # Convert box to COCO format (x, y, width, height)
                     x_min, y_min, x_max, y_max = box
                     width = x_max - x_min
                     height = y_max - y_min
@@ -66,9 +64,7 @@ class CarStickerEvaluator(DatasetEvaluator):
                         "bbox": coco_box,  
                         "score": float(score),  
                     }
-                    #print('processed instance: ',prediction_item)
                     self._predictions.append(prediction_item)
-            #print("Processed prediction:", prediction)
 
     def evaluate(self):
         if self._distributed:
@@ -83,10 +79,6 @@ class CarStickerEvaluator(DatasetEvaluator):
             self._logger.warning("[CarStickerEvaluator] Did not receive valid predictions.")
             return {}
 
-             
-
-       
-
         if self._output_dir:
             PathManager.mkdirs(self._output_dir)
             file_path = os.path.join(self._output_dir, "car_sticker_predictions.pth")
@@ -100,13 +92,9 @@ class CarStickerEvaluator(DatasetEvaluator):
 
     def _eval_predictions(self):
         self._prepare_annotations()
-
-        
-    
-        #self._results.update(ap_result)
-        #self._logger.info("Car sticker evaluation results: {}".format(self._results))
-
-    
+      
+        # self._results.update(ap_result)
+        # self._logger.info("Car sticker evaluation results: {}".format(self._results))
 
     def _prepare_annotations(self):
         gt_annotations = []
@@ -122,8 +110,7 @@ class CarStickerEvaluator(DatasetEvaluator):
         is_top4 = "top4" in self._dataset_name
         has_windshield = "ws" in self._dataset_name
 
-        #make sure mapping of contiguous to stickers is correct according to training set up (top 4, tiny only, or 60 + 1) 
-
+        # Determine the correct mapping based on dataset name.
         if is_tinyonly and is_top4 and has_windshield:
             IDMAP = metadata.tinyonly_top4_stickers_ws_id_to_contiguous_id
         elif has_windshield:
@@ -135,85 +122,79 @@ class CarStickerEvaluator(DatasetEvaluator):
         else:
             IDMAP = metadata.novel_dataset_id_to_contiguous_id
       
-        
-      #  if is_tiny_only:
-      #      IDMAP = metadata.tinyonly_stickers_id_to_contiguous_id
-       # else:
-       #     IDMAP = metadata.novel_dataset_id_to_contiguous_id
-
-        #FOR NOW HANDLE CORRECT MAPPINGS FOR EACH DATASET BY MANUALLY CHANGING LINE BELOW
-        #  "tinyonly_top4_stickers_id_to_contiguous_id"
-        
-        #IDMAP = metadata.tinyonly_stickers_id_to_contiguous_id
-        #IDMAP = metadata.tinyonly_top4_stickers_id_to_contiguous_id
-
-       
-
-        
-        
         inverse_IDMAP = {v: k for k, v in IDMAP.items()}
 
         print('**** INVERSE MAP TO BE USED IN EVALUATION *****')
         print(inverse_IDMAP)
         
-
         for prediction in self._predictions:
-
             if prediction["image_id"] not in processed_image_ids:
-                # Add ground truth annotations only if the image ID hasn't been processed yet
-                #gt_annotations.extend(get_ground_truth_annotations(prediction["image_id"]))
-                processed_image_ids.add(prediction["image_id"])  # Add the image ID to the set of processed IDs
-            # remap to original category id
+               
+                processed_image_ids.add(prediction["image_id"])
+            # Remap to original category id
             prediction['category_id'] = inverse_IDMAP[prediction['category_id']]
             pred_annotations.append(prediction)
 
-
-
-     
-        # Convert _predictions to JSON format
+        # Save predictions to a JSON file.
         predictions_json = json.dumps(pred_annotations)
-        
-            # Write predictions to a JSON file in the current directory
-        file_path = "car_sticker_predictions.json"
-        with open(file_path, "w") as f:
+        pred_json_path = "car_sticker_predictions.json"
+        with open(pred_json_path, "w") as f:
             f.write(predictions_json)
 
-         #load ground truth
-        #with open(file_path, 'r') as f:
-         #   gt_data = json.load(self._json_file)
-            
-        
-        #with contextlib.redirect_stdout(io.StringIO()):
-         #   coco_gt = COCO(json_file)
-
-        
-
-        #comment for now since calculating of AP is done on a separate script 
-
+        # Load ground truth annotations
         coco_gt = COCO(self._json_file)
-        
         coco_gt.createIndex()
-        coco_pred = coco_gt.loadRes(file_path)
-        
-        coco_eval = COCOeval(coco_gt, coco_pred, 'bbox')
-        
-        coco_eval.evaluate()
-        coco_eval.accumulate()
-        coco_eval.summarize()
-        
-        output_file = "coco_eval_results.txt"
-        with open(output_file, "w") as f:
-            with contextlib.redirect_stdout(f):  # Redirect only within this block
-                coco_eval.summarize()
+        coco_pred = coco_gt.loadRes(pred_json_path)
 
+      
+        # Overall evaluation (all categories)
+  
+        coco_eval_overall = COCOeval(coco_gt, coco_pred, 'bbox')
+        coco_eval_overall.evaluate()
+        coco_eval_overall.accumulate()
+        overall_buffer = io.StringIO()
+        with contextlib.redirect_stdout(overall_buffer):
+            coco_eval_overall.summarize()
+        overall_summary = overall_buffer.getvalue()
+        print("OVERALL EVALUATION SUMMARY:")
+        print(overall_summary)
 
-        
-        
+        # Write the overall evaluation summary to a text file.
+        overall_output_file = "coco_eval_results.txt"
+        with open(overall_output_file, "w") as f:
+            f.write("OVERALL EVALUATION SUMMARY:\n")
+            f.write(overall_summary)
 
-        #return gt_dataset, pred_annotations
+       
+        # Per-class evaluation
+      
+        per_class_results = "PER-CLASS EVALUATION SUMMARY:\n\n"
+        for catId in coco_gt.getCatIds():
+            # Get cat name
+            cat_info = coco_gt.loadCats([catId])[0]
+            cat_name = cat_info['name']
 
+            per_class_results += f"Category {catId} ({cat_name}):\n"
+            coco_eval_cat = COCOeval(coco_gt, coco_pred, 'bbox')
+            coco_eval_cat.params.catIds = [catId]
+            coco_eval_cat.evaluate()
+            coco_eval_cat.accumulate()
+            cat_buffer = io.StringIO()
+            with contextlib.redirect_stdout(cat_buffer):
+                coco_eval_cat.summarize()
+            cat_summary = cat_buffer.getvalue()
+            per_class_results += cat_summary + "\n\n"
 
+        print(per_class_results)
 
+        # Write the per-class evaluation summary to a separate text file
+        per_class_output_file = "coco_eval_per_class_results.txt"
+        with open(per_class_output_file, "w") as f:
+            f.write(per_class_results)
+
+      
+        self._results["overall"] = overall_summary
+        self._results["per_class"] = per_class_results
 
 def _evaluate_predictions_on_coco(
         coco_gt, coco_results, iou_type, catIds=None
@@ -232,6 +213,3 @@ def _evaluate_predictions_on_coco(
         coco_eval.summarize()
         
     return coco_eval
-
-
-
