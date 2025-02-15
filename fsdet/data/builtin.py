@@ -323,30 +323,61 @@ register_meta_stickers("datasets/stickers_split/stickers_ws_train_31shot_1280.js
 register_meta_stickers("datasets/stickers/annotations/stickers_ws_31shot_test_1280.json", "datasets/stickers/stickers_ws_test_31shot_1280", _get_builtin_metadata("stickers_fewshot"), "stickers_ws_31shot_1280_test_tinyonly_top4")
 
 # 1 shot
-register_meta_stickers("datasets/stickers_split/stickers_ws_train_1shot_1280.json", "datasets/stickers/stickers_ws", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_ws_1shot_1280")
+register_meta_stickers("datasets/stickers_split/stickers_ws_train_1shot_1280.json", "datasets/stickers/stickers_ws_all", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_ws_1shot_1280")
 
-register_meta_stickers("datasets/stickers/annotations/stickers_ws_1shot_test_1280.json", "datasets/stickers/stickers_ws", _get_builtin_metadata("stickers_fewshot"), "stickers_ws_1shot_1280_test_tinyonly_top4")
+register_meta_stickers("datasets/stickers/annotations/stickers_ws_1shot_test_1280.json", "datasets/stickers/stickers_ws_all", _get_builtin_metadata("stickers_fewshot"), "stickers_ws_1shot_1280_test_tinyonly_top4")
 
 # 2 shot
-register_meta_stickers("datasets/stickers_split/stickers_ws_train_2shot_1280.json", "datasets/stickers/stickers_ws", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_ws_2shot_1280")
+register_meta_stickers("datasets/stickers_split/stickers_ws_train_2shot_1280.json", "datasets/stickers/stickers_ws_all", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_ws_2shot_1280")
 
-register_meta_stickers("datasets/stickers/annotations/stickers_ws_2shot_test_1280.json", "datasets/stickers/stickers_ws", _get_builtin_metadata("stickers_fewshot"), "stickers_ws_2shot_1280_test_tinyonly_top4")
+register_meta_stickers("datasets/stickers/annotations/stickers_ws_2shot_test_1280.json", "datasets/stickers/stickers_ws_all", _get_builtin_metadata("stickers_fewshot"), "stickers_ws_2shot_1280_test_tinyonly_top4")
 
 # 3 shot
 
-register_meta_stickers("datasets/stickers_split/stickers_ws_train_3shot_1280.json", "datasets/stickers/stickers_ws", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_ws_3shot_1280")
+register_meta_stickers("datasets/stickers_split/stickers_ws_train_3shot_1280.json", "datasets/stickers/stickers_ws_all", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_ws_3shot_1280")
 
-register_meta_stickers("datasets/stickers/annotations/stickers_ws_3shot_test_1280.json", "datasets/stickers/stickers_ws", _get_builtin_metadata("stickers_fewshot"), "stickers_ws_3shot_1280_test_tinyonly_top4")
+register_meta_stickers("datasets/stickers/annotations/stickers_ws_3shot_test_1280.json", "datasets/stickers/stickers_ws_all", _get_builtin_metadata("stickers_fewshot"), "stickers_ws_3shot_1280_test_tinyonly_top4")
 
 # 5 shot
 
-register_meta_stickers("datasets/stickers_split/stickers_ws_train_5shot_1280.json", "datasets/stickers/stickers_ws", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_ws_5shot_1280")
+register_meta_stickers("datasets/stickers_split/stickers_ws_train_5shot_1280.json", "datasets/stickers/stickers_ws_all", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_ws_5shot_1280")
 
-register_meta_stickers("datasets/stickers/annotations/stickers_ws_5shot_test_1280.json", "datasets/stickers/stickers_ws", _get_builtin_metadata("stickers_fewshot"), "stickers_ws_5shot_1280_test_tinyonly_top4")
+register_meta_stickers("datasets/stickers/annotations/stickers_ws_5shot_test_1280.json", "datasets/stickers/stickers_ws_all", _get_builtin_metadata("stickers_fewshot"), "stickers_ws_5shot_1280_test_tinyonly_top4")
 
 # 10 shot
 
-register_meta_stickers("datasets/stickers_split/stickers_ws_train_10shot_1280.json", "datasets/stickers/stickers_ws", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_ws_10shot_1280")
+register_meta_stickers("datasets/stickers_split/stickers_ws_train_10shot_1280.json", "datasets/stickers/stickers_ws_all", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_ws_10shot_1280")
 
-register_meta_stickers("datasets/stickers/annotations/stickers_ws_10shot_test_1280.json", "datasets/stickers/stickers_ws", _get_builtin_metadata("stickers_fewshot"), "stickers_ws_10shot_1280_test_tinyonly_top4")
+register_meta_stickers("datasets/stickers/annotations/stickers_ws_10shot_test_1280.json", "datasets/stickers/stickers_ws_all", _get_builtin_metadata("stickers_fewshot"), "stickers_ws_10shot_1280_test_tinyonly_top4")
+
+# STICKERS ONLY
+
+# 1 shot
+register_meta_stickers("datasets/stickers_split/stickers_train_1shot_1280.json", "datasets/stickers/stickers_all", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_1shot_1280")
+
+register_meta_stickers("datasets/stickers/annotations/stickers_1shot_test_1280.json", "datasets/stickers/stickers_all", _get_builtin_metadata("stickers_fewshot"), "stickers_1shot_1280_test_tinyonly_top4")
+
+# 2 shot
+register_meta_stickers("datasets/stickers_split/stickers_train_2shot_1280.json", "datasets/stickers/stickers_all", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_2shot_1280")
+
+register_meta_stickers("datasets/stickers/annotations/stickers_2shot_test_1280.json", "datasets/stickers/stickers_all", _get_builtin_metadata("stickers_fewshot"), "stickers_2shot_1280_test_tinyonly_top4")
+
+# 3 shot
+
+register_meta_stickers("datasets/stickers_split/stickers_train_3shot_1280.json", "datasets/stickers/stickers_all", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_3shot_1280")
+
+register_meta_stickers("datasets/stickers/annotations/stickers_3shot_test_1280.json", "datasets/stickers/stickers_all", _get_builtin_metadata("stickers_fewshot"), "stickers_3shot_1280_test_tinyonly_top4")
+
+# 5 shot
+
+register_meta_stickers("datasets/stickers_split/stickers_train_5shot_1280.json", "datasets/stickers/stickers_all", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_5shot_1280")
+
+register_meta_stickers("datasets/stickers/annotations/stickers_5shot_test_1280.json", "datasets/stickers/stickers_all", _get_builtin_metadata("stickers_fewshot"), "stickers_5shot_1280_test_tinyonly_top4")
+
+# 10 shot
+
+register_meta_stickers("datasets/stickers_split/stickers_train_10shot_1280.json", "datasets/stickers/stickers_all", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_10shot_1280")
+
+register_meta_stickers("datasets/stickers/annotations/stickers_10shot_test_1280.json", "datasets/stickers/stickers_all", _get_builtin_metadata("stickers_fewshot"), "stickers_10shot_1280_test_tinyonly_top4")
+
 
