@@ -494,3 +494,31 @@ class StandardROIHeads(ROIHeads):
                 self.test_detections_per_img,
             )
             return pred_instances
+
+
+@ROI_HEADS_REGISTRY.register()
+class DilatedROIHeads(StandardROIHeads):
+    """
+    A modified ROI head that uses dilated convolutions for experimentation.
+    """
+    def __init__(self, cfg, input_shape: ShapeSpec):
+        super().__init__(cfg, input_shape)
+        self._modify_for_dilation()
+    
+    def _modify_for_dilation(self):
+        """ Modify convolution layers to use dilation. """
+        for name, module in self.box_head.named_children():
+            if isinstance(module, nn.Conv2d):
+                # Replace with a dilated version of the same conv layer
+                setattr(
+                    self.box_head, name,
+                    nn.Conv2d(
+                        in_channels=module.in_channels,
+                        out_channels=module.out_channels,
+                        kernel_size=module.kernel_size,
+                        stride=module.stride,
+                        padding=module.padding,  # Adjust if needed
+                        dilation=2,  # Apply dilation factor
+                        bias=(module.bias is not None)
+                    )
+                )
