@@ -290,14 +290,14 @@ register_meta_stickers("datasets/stickers_split/stickers_train_31shot_1400.json"
 
 #TEST SETS STICKERS
 register_meta_stickers("datasets/stickers/annotations/stickers_28shot_test.json", "datasets/stickers/stickers_test_28shot", _get_builtin_metadata("stickers_fewshot"), "stickers_28shot_test")
-register_meta_stickers("datasets/stickers/annotations/stickers_31shot_test.json", "datasets/stickers/stickers_test_31shot_1400", _get_builtin_metadata("stickers_fewshot"), "stickers_31shot_1400_test")
-register_meta_stickers("datasets/stickers/annotations/stickers_31shot_test_1280.json", "datasets/stickers/stickers_test_31shot_1280", _get_builtin_metadata("stickers_fewshot"), "stickers_31shot_1280_test")
+register_meta_stickers("datasets/stickers/annotations/stickers_31shot_test.json", "datasets/stickers/stickers_test_31shot_140", _get_builtin_metadata("stickers_fewshot"), "stickers_31shot_1400_test")
+register_meta_stickers("datasets/stickers/annotations/stickers_31shot_test_1280.json", "datasets/stickers/stickers_all", _get_builtin_metadata("stickers_fewshot"), "stickers_31shot_1280_test")
 
 #top4 version (for logic in stickers evaluator for correct ID mapping, content is exactly the same as "stickers_31shot_1280_test" above)
 # use in YAML file for experiments using top 4 tiny only classes 
-register_meta_stickers("datasets/stickers/annotations/stickers_31shot_test_1280.json", "datasets/stickers/stickers_test_31shot_1280", _get_builtin_metadata("stickers_fewshot"), "stickers_31shot_1280_test_tinyonly")
+register_meta_stickers("datasets/stickers/annotations/stickers_31shot_test_1280.json", "datasets/stickers/stickers_all", _get_builtin_metadata("stickers_fewshot"), "stickers_31shot_1280_test_tinyonly")
 
-register_meta_stickers("datasets/stickers/annotations/stickers_31shot_test_1280.json", "datasets/stickers/stickers_test_31shot_1280", _get_builtin_metadata("stickers_fewshot"), "stickers_31shot_1280_test_tinyonly_top4")
+register_meta_stickers("datasets/stickers/annotations/stickers_31shot_test_1280.json", "datasets/stickers/stickers_all", _get_builtin_metadata("stickers_fewshot"), "stickers_31shot_1280_test_tinyonly_top4")
 
 
 #COCO dataset
@@ -313,14 +313,14 @@ register_meta_coco("30_tinyonly_top4",
                   os.path.join("datasets/cocosplit/top4_tinyonly.json"),
                   )
 #31shot 1280
-register_meta_stickers("datasets/stickers_split/stickers_train_31shot_1280.json", "datasets/stickers/stickers_train_31shot_1280", _get_builtin_metadata("stickers_fewshot"), "stickers_31shot_1280")
-register_meta_stickers("datasets/stickers_split/stickers_train_31shot_1280.json", "datasets/stickers/stickers_train_31shot_1280", _get_builtin_metadata("stickers_fewshot"), "tinyonly_stickers_31shot_1280")
-register_meta_stickers("datasets/stickers_split/stickers_train_31shot_1280.json", "datasets/stickers/stickers_train_31shot_1280", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_31shot_1280")
+register_meta_stickers("datasets/stickers_split/stickers_train_31shot_1280.json", "datasets/stickers/stickers_all", _get_builtin_metadata("stickers_fewshot"), "stickers_31shot_1280")
+register_meta_stickers("datasets/stickers_split/stickers_train_31shot_1280.json", "datasets/stickers/stickers_all", _get_builtin_metadata("stickers_fewshot"), "tinyonly_stickers_31shot_1280")
+register_meta_stickers("datasets/stickers_split/stickers_train_31shot_1280.json", "datasets/stickers/stickers_all", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_31shot_1280")
 
 #31shot 1280 with windshield class and annotations
-register_meta_stickers("datasets/stickers_split/stickers_ws_train_31shot_1280.json", "datasets/stickers/stickers_ws_train_31shot_1280", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_ws_31shot_1280")
+register_meta_stickers("datasets/stickers_split/stickers_ws_train_31shot_1280.json", "datasets/stickers/stickers_ws_all", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_ws_31shot_1280")
 
-register_meta_stickers("datasets/stickers/annotations/stickers_ws_31shot_test_1280.json", "datasets/stickers/stickers_ws_test_31shot_1280", _get_builtin_metadata("stickers_fewshot"), "stickers_ws_31shot_1280_test_tinyonly_top4")
+register_meta_stickers("datasets/stickers/annotations/stickers_ws_31shot_test_1280.json", "datasets/stickers/stickers_ws_all", _get_builtin_metadata("stickers_fewshot"), "stickers_ws_31shot_1280_test_tinyonly_top4")
 
 # 1 shot
 register_meta_stickers("datasets/stickers_split/stickers_ws_train_1shot_1280.json", "datasets/stickers/stickers_ws_all", _get_builtin_metadata("stickers_fewshot"), "tinyonly_top4_stickers_ws_1shot_1280")
