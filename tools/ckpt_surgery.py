@@ -52,7 +52,8 @@ def parse_args():
     parser.add_argument("--lvis", action="store_true", help="For LVIS models")
     #ADDED BELOW
     parser.add_argument('--stickers', action="store_true", help="For appending 1 novel weight for car-sticker (COCO)")
-    parser.add_argument('--tinyonly', action="store_true", help ="For tinyonly dataset (COCO)")
+    parser.add_argument('--tinyonly', action="store_true", help ="For tinyonly dataset (COCO) + stickers")
+    parser.add_argument('--tinyonly_coco', action="store_true", help ="For tinyonly dataset (COCO)")
     parser.add_argument('--tinyonly_top4', action="store_true", help ="For tinyonly dataset with top 4 classes in terms of instance count in originl tinyonly dataset (COCO)")
     parser.add_argument('--tinyonly_top4_ws', action="store_true", help ="For tinyonly dataset with top 4 classes in terms of instance count in originl tinyonly dataset (COCO) and windshield class")
     parser.add_argument('--stickers_ws', action="store_true", help ="For training only on stickers class and windhsield class")
@@ -85,12 +86,13 @@ def ckpt_surgery(args):
             torch.nn.init.normal_(new_weight, 0, 0.01)
         else:
             new_weight = torch.zeros(tar_size)
-        if args.coco or args.lvis or args.stickers or args.tinyonly or args.tinyonly_top4 or args.tinyonly_top4_ws or args.stickers_ws:
+        if args.coco or args.lvis or args.stickers or args.tinyonly or args.tinyonly_top4 or args.tinyonly_top4_ws or args.stickers_ws or args.tinyonly_coco:
             for i, c in enumerate(BASE_CLASSES):
-                idx = i if args.coco or args.stickers or args.tinyonly or args.tinyonly_top4 or args.tinyonly_top4_ws else c
+                idx = i if args.coco or args.stickers or args.tinyonly or args.tinyonly_top4 or args.tinyonly_top4_ws or args.tinyonly_coco else c
+                print('**IDX' + str(idx))
 
                 #ADDED BELOW LOGIC FOR TINYONLY
-                if args.tinyonly:
+                if args.tinyonly or args.tinyonly_coco:
                     idx = CONTIGUOUS_TINYONLY_TO_60BASE_MAPPING[idx]
                 elif args.tinyonly_top4:
                     idx = CONTIGUOUS_TINYONLY_TOP4_TO_60BASE_MAPPING[idx]
@@ -133,7 +135,7 @@ def combine_ckpts(args):
             new_weight = torch.rand((tar_size, feat_size))
         else:
             new_weight = torch.zeros(tar_size)
-        if args.coco or args.lvis or args.stickers or args.tinyonly or args.tinyonly_top4 or args.tinyonly_top4_ws:
+        if args.coco or args.lvis or args.stickers or args.tinyonly or args.tinyonly_top4 or args.tinyonly_top4_ws or args.tinyonly_coco:
             for i, c in enumerate(BASE_CLASSES):
                 idx = i if args.coco else c
                 if "cls_score" in param_name:
@@ -146,7 +148,7 @@ def combine_ckpts(args):
             new_weight[:prev_cls] = pretrained_weight[:prev_cls]
 
         ckpt2_weight = ckpt2["model"][weight_name]
-        if args.coco or args.lvis or args.stickers or args.tinyonly or args.tinyonly_top4 or args.tinyonly_top4_ws or args.stickers_ws:
+        if args.coco or args.lvis or args.stickers or args.tinyonly or args.tinyonly_top4 or args.tinyonly_top4_ws or args.stickers_ws or args.tinyonly_coco:
             for i, c in enumerate(NOVEL_CLASSES):
                 if "cls_score" in param_name:
                     new_weight[IDMAP[c]] = ckpt2_weight[i]
@@ -258,6 +260,21 @@ if __name__ == "__main__":
         ALL_CLASSES = sorted(BASE_CLASSES + NOVEL_CLASSES)
         IDMAP = {v: i for i, v in enumerate(ALL_CLASSES)}
         TAR_SIZE = 61
+    elif args.tinyonly_coco:
+    
+    #tinyonly is tiny only COCO classes + stickers class
+        BASE_CLASSES = [8, 10, 11, 13, 14, 15, 27, 28, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
+                       43, 46, 48, 49, 50, 52, 53, 55, 57, 58, 60, 74, 75, 76, 77, 78, 79, 80, 85, 86, 87, 89, 90]
+        NOVEL_CLASSES = []
+        ALL_CLASSES = sorted(BASE_CLASSES + NOVEL_CLASSES)
+        IDMAP = {v: i for i, v in enumerate(ALL_CLASSES)}
+        TAR_SIZE = 43
+        #This is mapping of COCO classes in tinyonly (contiguous) to original weight vector in base trained model with 60 COCO classes
+        CONTIGUOUS_TINYONLY_TO_60BASE_MAPPING = {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 10, 7: 11, 8: 12, 9: 13, 10: 14, 11: 15, 12: 16, 13: 17, 14: 18, 15: 19, 16: 20, 
+                                                 17: 21, 18: 22,             
+                                                19: 23, 20: 24, 21: 25, 22: 27, 23: 28, 24: 29, 25: 31, 26: 32, 27: 34, 28: 36, 29: 37, 30: 39, 31: 44, 32: 45, 33: 46, 34: 47,
+    35: 48, 36: 49, 37: 50, 38: 54, 39: 55, 40: 56, 41: 58, 42: 59}
+
 
     elif args.tinyonly:
         BASE_CLASSES = [8, 10, 11, 13, 14, 15, 27, 28, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
@@ -271,6 +288,8 @@ if __name__ == "__main__":
                                                  17: 21, 18: 22,             
                                                 19: 23, 20: 24, 21: 25, 22: 27, 23: 28, 24: 29, 25: 31, 26: 32, 27: 34, 28: 36, 29: 37, 30: 39, 31: 44, 32: 45, 33: 46, 34: 47,
                                                  35: 48, 36: 49, 37: 50, 38: 54, 39: 55, 40: 56, 41: 58, 42: 59, 43: 60}
+    
+        
     elif args.tinyonly_top4:
         BASE_CLASSES = [10, 37, 38, 90]
         NOVEL_CLASSES = [91,]
