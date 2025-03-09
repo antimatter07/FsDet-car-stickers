@@ -2,7 +2,7 @@ _BASE_: "../Base-RCNN-FPN.yaml"
 MODEL:
 # checkpoints/stickers/stickers_31shot_tinyonly_top4_8_random_all_5000iters_lr001_unfreeze/checkpoint
 #
-  WEIGHTS: "checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot_tinyonly_top4classes/model_reset_surgery.pth"
+  WEIGHTS: "checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot_tinyonly_top4classes_tinyonlybase3000iters/model_reset_surgery.pth"
   MASK_ON: False
   RESNETS:
     DEPTH: 101
@@ -36,4 +36,4 @@ SOLVER:
   CHECKPOINT_PERIOD: 250
   WARMUP_ITERS: 10
 # checkpoints/stickers/stickers_31shot_tinyonly_top4_8_random_all_5000iters_lr001_unfreeze/checkpoint
-OUTPUT_DIR: "checkpoints/stickers/stickers_3shot_tinyonly_top4_8_random_all_500iters_lr001_unfreeze_r-nms_fbackbone"
+OUTPUT_DIR: "checkpoints/stickers/stickers_3shot_tinyonly_top4_8_random_all_500iters_lr001_unfreeze_r-nms_fbackbone_tinyonlybase_3000iters"
