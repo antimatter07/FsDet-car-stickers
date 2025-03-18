@@ -7,13 +7,17 @@ from detectron2.modeling.proposal_generator import build_proposal_generator
 from detectron2.structures import ImageList
 from detectron2.utils.logger import log_first_n
 from torch import nn
+from detectron2.modeling.backbone import ResNet
+from detectron2.modeling import BACKBONE_REGISTRY
+from detectron2.modeling.backbone.fpn import build_resnet_fpn_backbone
+
 
 from fsdet.modeling.roi_heads import build_roi_heads
 
 # avoid conflicting with the existing GeneralizedRCNN module in Detectron2
 from .build import META_ARCH_REGISTRY
 
-__all__ = ["GeneralizedRCNN", "ProposalNetwork"]
+__all__ = ["GeneralizedRCNN", "ProposalNetwork", "build_dilated_resnet_fpn_backbone"]
 
 
 @META_ARCH_REGISTRY.register()
@@ -266,3 +270,22 @@ class ProposalNetwork(nn.Module):
             r = detector_postprocess(results_per_image, height, width)
             processed_results.append({"proposals": r})
         return processed_results
+
+@BACKBONE_REGISTRY.register()
+def build_dilated_resnet_fpn_backbone(cfg, input_shape):
+    # Load default ResNet FPN backbone
+    backbone = build_resnet_fpn_backbone(cfg, input_shape)
+    
+    # Modify stage 5 (`res5`) to be dilated
+    for bottleneck in backbone.bottom_up.stages[3].children():
+        bottleneck.conv2 = torch.nn.Conv2d(
+            in_channels=bottleneck.conv2.in_channels,
+            out_channels=bottleneck.conv2.out_channels,
+            kernel_size=bottleneck.conv2.kernel_size,
+            stride=1,  # Remove stride
+            padding=2,  # Adjust padding
+            dilation=2,  # Apply dilation
+            bias=(bottleneck.conv2.bias is not None)  # Keep bias if it was present
+        )
+
+    return backbone
