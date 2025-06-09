@@ -1,9 +1,9 @@
 # --- ACRONYMS ---
 # ws = windshield
 # cs = car stickers
-
 import os
 import cv2
+import numpy as np
 import torch
 from torchvision import transforms
 from PIL import Image
@@ -45,23 +45,33 @@ ws_model = load_model("configs/stickers-detection/stickers_ws_31shot_tinyonly_to
 
 # converts OpenCV image to tensor for GeneralizedRCNN input format
 def preprocess_image(image_path):
-    image = cv2.cvtColor(cv2.imread(image_path), cv2.COLOR_BGR2RGB)
+    image_bgr = cv2.imread(image_path)
+
+    # print("INPUT IMAGE_BGR: ", image_bgr)
+    # print(image_bgr.shape)
+    # print(image_bgr)
+
+    print("Does image exist? ", os.path.exists(image_path))  # Should return True
     
-    print("INPUT IMAGE: ", image)
-    print(type(image))
-    print(image.shape)
+    if image_bgr is None:
+        raise FileNotFoundError(f"Image not found: {image_path}")
+
+    image = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+    
+    # print("CONVERTED IMAGE: ", image)
+    # print(image.shape)
+    # print(image)
 
     image = image.astype(np.float32) / 255.0
 
     image_tensor = torch.from_numpy(image).permute(2, 0, 1)
 
     input = {
-        "image": image_tensor,
+        "image": image_tensor.to(device),
         "height": image_tensor.shape[1],
         "width": image_tensor.shape[2],
     }
 
-    # inputs["image"] = inputs["image"].to(device)
     return input
 
 dataset_name = "tinyonly_top4_stickers_ws_31shot_1280"
@@ -70,35 +80,30 @@ dataset_name = "tinyonly_top4_stickers_ws_31shot_1280"
 image_files = [f for f in os.listdir(input_folder) if f.lower().endswith((".jpg", ".jpeg"))]
 print("Image file count: ", len(image_files))
 
-
 for image_filename in image_files:
     image_path = os.path.join(input_folder, image_filename)
     image_tensor = preprocess_image(image_path)
-    
-    # if image is None:
-    #     print(f"Skipping invalid image: {image_path}")
-    #     continue
-    
-    # detect windshield and store map of its coordinates
-    with torch.no_grad():
-        windshield_outputs = ws_model(image_tensor)
 
-    # extract detected windshield boxes
-    if windshield_outputs:
-        instances = windshield_outputs[0].get("instances", None)
-        print("INSTANCE:")
-        print(instances)
-        if instances and hasattr(instances, "pred_boxes"):
-            print("Windshield detected")
-            windshield_boxes = instances.pred_boxes.tensor.cpu().numpy()
-        else:
-            print("No windshields detected")
-            windshield_boxes = []
-    else:
-        windshield_boxes = []
-    
     break
     
+    # # detect windshield and store map of its coordinates
+    # with torch.no_grad():
+    #     windshield_outputs = ws_model(image_tensor)
+
+    # # extract detected windshield boxes
+    # if windshield_outputs:
+    #     instances = windshield_outputs[0].get("instances", None)
+    #     print("INSTANCE:")
+    #     print(instances)
+    #     if instances and hasattr(instances, "pred_boxes"):
+    #         print("Windshield detected")
+    #         windshield_boxes = instances.pred_boxes.tensor.cpu().numpy()
+    #     else:
+    #         print("No windshields detected")
+    #         windshield_boxes = []
+    # else:
+    #     windshield_boxes = []
+
 
     # # detect stickers within coordinates
     # sticker_detections = []

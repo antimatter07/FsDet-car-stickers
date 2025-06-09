@@ -43,30 +43,37 @@ class CarStickerEvaluator(DatasetEvaluator):
         self._predictions = []
 
     def process(self, inputs, outputs):
-        
         for input, output in zip(inputs, outputs):
             prediction = {"image_id": input["image_id"]}
             if "instances" in output:
                 pred_instances = output["instances"]
+                
+                # Check if pred_boxes, scores, and pred_classes exist
+                has_boxes = hasattr(pred_instances, "pred_boxes")
+                has_scores = hasattr(pred_instances, "scores")
+                has_classes = hasattr(pred_instances, "pred_classes")
+                
+                if has_boxes and has_scores and has_classes:
+                    boxes = pred_instances.pred_boxes.tensor.cpu().numpy()
+                    scores = pred_instances.scores.cpu().numpy()
+                    classes = pred_instances.pred_classes.cpu().numpy()
                     
-                # Get boxes, scores and classes on CPU
-                boxes = pred_instances.pred_boxes.tensor.cpu().numpy()
-                scores = pred_instances.scores.cpu().numpy()
-                classes = pred_instances.pred_classes.cpu().numpy()
-                for box, score, cls in zip(boxes, scores, classes):
-                    # Convert box to COCO format (x, y, width, height)
-                    x_min, y_min, x_max, y_max = box
-                    width = x_max - x_min
-                    height = y_max - y_min
-                    coco_box = [float(x_min), float(y_min), float(width), float(height)]
+                    for box, score, cls in zip(boxes, scores, classes):
+                        x_min, y_min, x_max, y_max = box
+                        width = x_max - x_min
+                        height = y_max - y_min
+                        coco_box = [float(x_min), float(y_min), float(width), float(height)]
                         
-                    prediction_item = {
-                        "image_id": input["image_id"],
-                        "category_id": cls.item(), 
-                        "bbox": coco_box,  
-                        "score": float(score),  
-                    }
-                    self._predictions.append(prediction_item)
+                        prediction_item = {
+                            "image_id": input["image_id"],
+                            "category_id": int(cls),  # ensure int type, not tensor
+                            "bbox": coco_box,
+                            "score": float(score),
+                        }
+                        self._predictions.append(prediction_item)
+                else:
+                    # No detections - you can optionally log or just continue
+                    self._logger.debug(f"No pred_boxes or other fields for image {input['image_id']}")
 
     def evaluate(self):
         if self._distributed:
