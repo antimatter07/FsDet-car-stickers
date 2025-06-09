@@ -44,31 +44,25 @@ ws_model = load_model("configs/stickers-detection/stickers_ws_31shot_tinyonly_to
 # cs_model = load_model("configs/stickers-detection/stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone.yaml")
 
 # converts OpenCV image to tensor for GeneralizedRCNN input format
-def preprocess_image(image):
-    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    img_tensor = torch.as_tensor(img_rgb.transpose(2, 0, 1).astype("flot32"))
+def preprocess_image(image_path):
+    image = cv2.cvtColor(cv2.imread(image_path), cv2.COLOR_BGR2RGB)
+    
+    print("INPUT IMAGE: ", image)
+    print(type(image))
+    print(image.shape)
 
-    inputs = {
-        "image": img_tensor,
-        "height": img_tensor.shape[1],
-        "width": img_tensor.shape[2],
+    image = image.astype(np.float32) / 255.0
+
+    image_tensor = torch.from_numpy(image).permute(2, 0, 1)
+
+    input = {
+        "image": image_tensor,
+        "height": image_tensor.shape[1],
+        "width": image_tensor.shape[2],
     }
 
-    inputs["image"] = inputs["image"].to(device)
-
-    # cfg = get_cfg()
-    
-    # image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    # image_pil = Image.fromarray(image_rgb)
-
-    # print("!!mean, std: ", cfg.MODEL.PIXEL_MEAN, ", ", cfg.MODEL.PIXEL_STD)
-    # transform = transforms.Compose([
-    #     transforms.Resize((720, 1280)),  # FSDet's input size (H, W)
-    #     transforms.ToTensor(),
-    #     transforms.Normalize(cfg.MODEL.PIXEL_MEAN, cfg.MODEL.PIXEL_STD)
-    # ])
-    # image_tensor = transform(image_pil).to(device)
-    # return [{"image": image_tensor}]
+    # inputs["image"] = inputs["image"].to(device)
+    return input
 
 dataset_name = "tinyonly_top4_stickers_ws_31shot_1280"
 
@@ -79,15 +73,11 @@ print("Image file count: ", len(image_files))
 
 for image_filename in image_files:
     image_path = os.path.join(input_folder, image_filename)
+    image_tensor = preprocess_image(image_path)
     
-    image = cv2.imread(image_path)
-    print("INPUT IMAGE: ", image_path)
-    
-    if image is None:
-        print(f"Skipping invalid image: {image_path}")
-        continue
-
-    image_tensor = preprocess_image(image)
+    # if image is None:
+    #     print(f"Skipping invalid image: {image_path}")
+    #     continue
     
     # detect windshield and store map of its coordinates
     with torch.no_grad():
@@ -98,14 +88,14 @@ for image_filename in image_files:
         instances = windshield_outputs[0].get("instances", None)
         print("INSTANCE:")
         print(instances)
-    #     if instances and hasattr(instances, "pred_boxes"):
-    #         print("Windshield detected")
-    #         windshield_boxes = instances.pred_boxes.tensor.cpu().numpy()
-    #     else:
-    #         print("No windshields detected")
-    #         windshield_boxes = []
-    # else:
-    #     windshield_boxes = []
+        if instances and hasattr(instances, "pred_boxes"):
+            print("Windshield detected")
+            windshield_boxes = instances.pred_boxes.tensor.cpu().numpy()
+        else:
+            print("No windshields detected")
+            windshield_boxes = []
+    else:
+        windshield_boxes = []
     
     break
     

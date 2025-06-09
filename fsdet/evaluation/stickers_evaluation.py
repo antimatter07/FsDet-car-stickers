@@ -43,33 +43,30 @@ class CarStickerEvaluator(DatasetEvaluator):
         self._predictions = []
 
     def process(self, inputs, outputs):
-        if self.cfg.SPLICE:
-            print('in splice!')
-        else:
-            
-            for input, output in zip(inputs, outputs):
-                prediction = {"image_id": input["image_id"]}
-                if "instances" in output:
-                    pred_instances = output["instances"]
+        
+        for input, output in zip(inputs, outputs):
+            prediction = {"image_id": input["image_id"]}
+            if "instances" in output:
+                pred_instances = output["instances"]
                     
-                    # Get boxes, scores and classes on CPU
-                    boxes = pred_instances.pred_boxes.tensor.cpu().numpy()
-                    scores = pred_instances.scores.cpu().numpy()
-                    classes = pred_instances.pred_classes.cpu().numpy()
-                    for box, score, cls in zip(boxes, scores, classes):
-                        # Convert box to COCO format (x, y, width, height)
-                        x_min, y_min, x_max, y_max = box
-                        width = x_max - x_min
-                        height = y_max - y_min
-                        coco_box = [float(x_min), float(y_min), float(width), float(height)]
+                # Get boxes, scores and classes on CPU
+                boxes = pred_instances.pred_boxes.tensor.cpu().numpy()
+                scores = pred_instances.scores.cpu().numpy()
+                classes = pred_instances.pred_classes.cpu().numpy()
+                for box, score, cls in zip(boxes, scores, classes):
+                    # Convert box to COCO format (x, y, width, height)
+                    x_min, y_min, x_max, y_max = box
+                    width = x_max - x_min
+                    height = y_max - y_min
+                    coco_box = [float(x_min), float(y_min), float(width), float(height)]
                         
-                        prediction_item = {
-                            "image_id": input["image_id"],
-                            "category_id": cls.item(), 
-                            "bbox": coco_box,  
-                            "score": float(score),  
-                        }
-                        self._predictions.append(prediction_item)
+                    prediction_item = {
+                        "image_id": input["image_id"],
+                        "category_id": cls.item(), 
+                        "bbox": coco_box,  
+                        "score": float(score),  
+                    }
+                    self._predictions.append(prediction_item)
 
     def evaluate(self):
         if self._distributed:

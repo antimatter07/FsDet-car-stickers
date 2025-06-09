@@ -6,6 +6,8 @@ from contextlib import contextmanager
 
 import torch
 from detectron2.utils.comm import is_main_process
+from detectron2.structures import Instances, Boxes
+import copy
 
 
 class DatasetEvaluator:
@@ -122,7 +124,68 @@ def inference_on_dataset(model, data_loader, evaluator, cfg):
                 total_compute_time = 0
 
             start_compute_time = time.time()
-            outputs = model(inputs)
+
+            if cfg.SPLICE:
+                # --- Begin splicing logic ---
+                splice_outputs = []
+                splice_inputs = []
+                for input in inputs:
+                    image = input["image"]
+                    h, w = image.shape[1], image.shape[2]
+
+                    tile_size = 512
+                    stride = 384  # overlap to avoid edge-cut issues
+
+                    tiles = []
+                    tile_infos = []
+
+                    for y0 in range(0, h, stride):
+                        for x0 in range(0, w, stride):
+                            y1 = min(y0 + tile_size, h)
+                            x1 = min(x0 + tile_size, w)
+
+                            tile = image[:, y0:y1, x0:x1]
+                            padded_tile = torch.zeros((3, tile_size, tile_size), dtype=tile.dtype, device=tile.device)
+                            padded_tile[:, :y1-y0, :x1-x0] = tile
+
+                            tile_input = copy.deepcopy(input)
+                            tile_input["image"] = padded_tile
+                            tile_input["height"] = tile_size
+                            tile_input["width"] = tile_size
+                            tile_infos.append((x0, y0))
+                            tiles.append(tile_input)
+
+                    tile_outputs = model(tiles)
+
+                    # Adjust predictions back to full image
+                    merged_output = {"instances": []}
+                    for out, (x0, y0) in zip(tile_outputs, tile_infos):
+                        instances = out["instances"].to("cpu")
+                        if instances.has("pred_boxes"):
+                            boxes = instances.pred_boxes.tensor.clone()
+                            boxes[:, 0::2] += x0  # x1, x2
+                            boxes[:, 1::2] += y0  # y1, y2
+                            instances.pred_boxes = Boxes(boxes)
+                        merged_output["instances"].append(instances)
+
+                    if merged_output["instances"]:
+                        merged_instances = Instances((h, w))
+                        all_instances = merged_output["instances"]
+                        merged_instances.pred_boxes = Boxes.cat([i.pred_boxes for i in all_instances])
+                        merged_instances.scores = torch.cat([i.scores for i in all_instances])
+                        merged_instances.pred_classes = torch.cat([i.pred_classes for i in all_instances])
+                        output = {"instances": merged_instances}
+                    else:
+                        output = {"instances": Instances((h, w))}
+
+                    splice_outputs.append(output)
+
+                outputs = splice_outputs
+                # --- End splicing logic ---
+            else:
+                outputs = model(inputs)
+            
+            
             torch.cuda.synchronize()
             total_compute_time += time.time() - start_compute_time
             evaluator.process(inputs, outputs)
