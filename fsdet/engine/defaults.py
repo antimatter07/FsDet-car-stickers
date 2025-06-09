@@ -73,6 +73,9 @@ def default_argument_parser():
         "--eval-only", action="store_true", help="evaluate last checkpoint"
     )
     parser.add_argument(
+        "--stickers-splice", action="store_true", help="evaluate last checkpoint"
+    )
+    parser.add_argument(
         "--eval-all",
         action="store_true",
         help="evaluate all saved checkpoints",
