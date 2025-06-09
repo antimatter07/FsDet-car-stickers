@@ -78,7 +78,7 @@ class DatasetEvaluators(DatasetEvaluator):
         return results
 
 
-def inference_on_dataset(model, data_loader, evaluator):
+def inference_on_dataset(model, data_loader, evaluator, cfg):
     """
     Run model on the data_loader and evaluate the metrics with evaluator.
     The model will be used in eval mode.
@@ -113,6 +113,8 @@ def inference_on_dataset(model, data_loader, evaluator):
     num_warmup = min(5, logging_interval - 1, total - 1)
     start_time = time.time()
     total_compute_time = 0
+    if cfg.SPLICE:
+        print('in splice evaluator!')
     with inference_context(model), torch.no_grad():
         for idx, inputs in enumerate(data_loader):
             if idx == num_warmup:
