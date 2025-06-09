@@ -36,7 +36,4 @@ SOLVER:
   WARMUP_ITERS: 10
 # checkpoints/stickers/stickers_31shot_tinyonly_top4_8_random_all_5000iters_lr001_unfreeze/checkpoint
 OUTPUT_DIR: "checkpoints/stickers/stickers_31shot_tinyonly_top4_8_random_all_2000iters_lr001_unfreeze_r-nms_fbackbone_nms4"
-SPLICE: True
-INPUT:
-    MIN_SIZE_TEST: 0
-    MAX_SIZE_TEST: 0
+#SPLICE: True

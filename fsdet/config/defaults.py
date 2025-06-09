@@ -20,3 +20,6 @@ _CC.MUTE_HEADER = True
 #For splice evaluation
 _CC.SPLICE = False
 
+_CC.INPUT.MIN_SIZE_TEST = 0
+_CC.INPUT.MAX_SIZE_TEST = 0
+
