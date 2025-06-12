@@ -12,6 +12,10 @@ from fvcore.common.file_io import PathManager
 from tabulate import tabulate
 import torchvision
 
+from torchvision.ops import nms
+from collections import defaultdict
+
+
 import detectron2.utils.comm as comm
 from detectron2.data import MetadataCatalog
 from detectron2.data.datasets.coco import convert_to_coco_json
@@ -153,7 +157,7 @@ class CarStickerEvaluator(DatasetEvaluator):
         # Load ground truth annotations
         coco_gt = COCO(self._json_file)
         coco_gt.createIndex()
-        coco_pred = coco_gt.loadRes(pred_json_path)
+        coco_pred = coco_gt.loadRes(pred_annotations)
 
       
         # Overall evaluation (all categories)
@@ -201,6 +205,66 @@ class CarStickerEvaluator(DatasetEvaluator):
         with open(per_class_output_file, "w") as f:
             f.write(per_class_results)
 
+        #Apply non maximum suppression for splice and save json file and eval resuuts
+        if self.cfg.SPLICE:
+            iou_thresh = 0.5
+            prediction_path = 'car_sticker_predictions.json'
+            #preds = load_predictions(prediction_path)
+            # Apply NMS 
+            filtered_preds = apply_nms(pred_annotations, iou_thresh)
+            nms_filename = prediction_path.replace(".json", "")
+            nms_filename = nms_filename + "iou" + str(iou_thresh) + "_nms.json" 
+            print(nms_filename)
+            save_predictions(filtered_preds, nms_filename)
+
+            coco_nms_pred = coco_gt.loadRes(filtered_preds)
+            # Per-class evaluation
+
+            coco_eval_overall = COCOeval(coco_gt, coco_nms_pred, 'bbox')
+            coco_eval_overall.evaluate()
+            coco_eval_overall.accumulate()
+            overall_buffer = io.StringIO()
+            with contextlib.redirect_stdout(overall_buffer):
+                coco_eval_overall.summarize()
+            overall_summary = overall_buffer.getvalue()
+            print("OVERALL EVALUATION SUMMARY (AFTER APPLYING NMS):")
+            print(overall_summary)
+    
+            # Write the overall evaluation summary to a text file.
+            overall_output_file = "coco_eval_results_slicednms.txt"
+            with open(overall_output_file, "w") as f:
+                f.write("OVERALL EVALUATION SUMMARY (AFTER APPLYING NMS):\n")
+                f.write(overall_summary)
+          
+            per_class_results = "PER-CLASS EVALUATION SUMMARY (AFTER APPLYING NMS):\n\n"
+            for catId in coco_gt.getCatIds():
+                # Get cat name
+                cat_info = coco_gt.loadCats([catId])[0]
+                cat_name = cat_info['name']
+    
+                per_class_results += f"Category {catId} ({cat_name}):\n"
+                coco_eval_cat = COCOeval(coco_gt, coco_nms_pred, 'bbox')
+                coco_eval_cat.params.catIds = [catId]
+                coco_eval_cat.evaluate()
+                coco_eval_cat.accumulate()
+                cat_buffer = io.StringIO()
+                with contextlib.redirect_stdout(cat_buffer):
+                    coco_eval_cat.summarize()
+                cat_summary = cat_buffer.getvalue()
+                per_class_results += cat_summary + "\n\n"
+            print(per_class_results)
+            # Write the per-class evaluation summary to a separate text file
+            per_class_output_file = "coco_eval_per_class_results_splicednms.txt"
+            with open(per_class_output_file, "w") as f:
+                f.write(per_class_results)
+
+            
+
+        
+
+        
+        
+
       
         self._results["overall"] = overall_summary
         self._results["per_class"] = per_class_results
@@ -222,3 +286,48 @@ def _evaluate_predictions_on_coco(
         coco_eval.summarize()
         
     return coco_eval
+
+def load_predictions(file_path):
+    with open(file_path, 'r') as f:
+        return json.load(f)
+
+def apply_nms(predictions, iou_threshold=0.5):
+    grouped_preds = defaultdict(list)
+
+    # group predictions by (image_id, category_id)
+    for pred in predictions:
+        key = (pred["image_id"], pred["category_id"])
+        grouped_preds[key].append(pred)
+
+    final_predictions = []
+
+    for (image_id, category_id), preds in grouped_preds.items():
+        boxes = torch.tensor([p["bbox"] for p in preds], dtype=torch.float32)
+        scores = torch.tensor([p["score"] for p in preds], dtype=torch.float32)
+
+        # convert [x, y, w, h] -> [x1, y1, x2, y2] for NMS
+        boxes_xyxy = boxes.clone()
+        boxes_xyxy[:, 2] = boxes_xyxy[:, 0] + boxes_xyxy[:, 2]
+        boxes_xyxy[:, 3] = boxes_xyxy[:, 1] + boxes_xyxy[:, 3]
+
+        # Apply NMS
+        keep_indices = nms(boxes_xyxy, scores, iou_threshold)
+
+        for idx in keep_indices:
+            # restore original [x, y, w, h] format
+            x1, y1, x2, y2 = boxes_xyxy[idx]
+            kept = preds[idx].copy()
+            kept["bbox"] = [
+                x1.item(),
+                y1.item(),
+                (x2 - x1).item(),
+                (y2 - y1).item()
+            ]
+            final_predictions.append(kept)
+
+    return final_predictions
+
+def save_predictions(predictions, output_path):
+    with open(output_path, 'w') as f:
+        json.dump(predictions, f, indent=2)
+

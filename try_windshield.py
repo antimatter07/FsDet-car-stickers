@@ -11,15 +11,18 @@ from fsdet.config import get_cfg
 from fsdet.modeling import GeneralizedRCNN
 from fsdet.checkpoint import DetectionCheckpointer
 from fsdet.evaluation import stickers_evaluation
-from detectron2.data import MetadataCatalog, DatasetCatalog, detection_utils as utils
-from fsdet.data import builtin
+from fsdet.data.meta_stickers import register_meta_stickers
+from fsdet.data.builtin_meta import _get_builtin_metadata
+from detectron2.data import MetadataCatalog, DatasetCatalog
 
 
 input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder
 output_folder = "results/try_windshield_results/" # output to save processed images
-os.makedirs(output_folder, exist_ok=True)
+dataset_name = "tinyonly_top4_stickers_ws_31shot_1280"
 
+os.makedirs(output_folder, exist_ok=True)
 torch.cuda.empty_cache()
+
 # os.environ["CUDA_VISIBLE_DEVICES"] = "3"  # SET GPU HERE
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("CURRENT DEVICE: ", device)
@@ -36,6 +39,10 @@ def load_model(config_path):
     DetectionCheckpointer(model).load(cfg.MODEL.WEIGHTS)
     checkpoint = torch.load(cfg.MODEL.WEIGHTS, map_location="cpu")
 
+    register_meta_stickers("datasets/stickers/annotations/stickers_ws_31shot_test_1280.json", input_folder, _get_builtin_metadata("stickers_fewshot"), "stickers_ws_31shot_1280_test")
+
+    cfg.DATASETS.TEST = ("stickers_ws_31shot_1280_test")
+    
     model.to(device).eval()
     return model
 
@@ -46,35 +53,20 @@ ws_model = load_model("configs/stickers-detection/stickers_ws_31shot_tinyonly_to
 # converts OpenCV image to tensor for GeneralizedRCNN input format
 def preprocess_image(image_path):
     image_bgr = cv2.imread(image_path)
-
-    # print("INPUT IMAGE_BGR: ", image_bgr)
-    # print(image_bgr.shape)
-    # print(image_bgr)
-
-    print("Does image exist? ", os.path.exists(image_path))  # Should return True
     
     if image_bgr is None:
         raise FileNotFoundError(f"Image not found: {image_path}")
 
     image = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-    
-    # print("CONVERTED IMAGE: ", image)
-    # print(image.shape)
-    # print(image)
-
-    image = image.astype(np.float32) / 255.0
-
-    image_tensor = torch.from_numpy(image).permute(2, 0, 1)
+    image_tensor = torch.from_numpy(image.astype("float32") / 255.0).permute(2, 0, 1).to(device)
 
     input = {
-        "image": image_tensor.to(device),
+        "image": image_tensor,
         "height": image_tensor.shape[1],
         "width": image_tensor.shape[2],
     }
 
     return input
-
-dataset_name = "tinyonly_top4_stickers_ws_31shot_1280"
 
 # Get all image files from the folder
 image_files = [f for f in os.listdir(input_folder) if f.lower().endswith((".jpg", ".jpeg"))]
@@ -83,27 +75,39 @@ print("Image file count: ", len(image_files))
 for image_filename in image_files:
     image_path = os.path.join(input_folder, image_filename)
     image_tensor = preprocess_image(image_path)
-
-    break
+    # print ("FILENAME: ", image_path)
     
     # # detect windshield and store map of its coordinates
     # with torch.no_grad():
-    #     windshield_outputs = ws_model(image_tensor)
+    #     windshield_outputs = ws_model([image_tensor]) #TODO: once correct, input all images into model at once
 
+    print("predicting class..")
+    outputs = ws_model([image_tensor])[0]
+    instances = outputs["instances"]  # Extract Instances object
+
+    # Now check for predictions
+    if instances.has("pred_classes"):
+        pred_classes = instances.pred_classes.cpu().numpy()
+        for cls in pred_classes:
+            class_name = metadata.thing_classes[cls] if cls < len(metadata.thing_classes) else f"Class {cls}"
+            print(f" - {class_name}")
+    else:
+        print("No predicted classes.")
+
+    break
     # # extract detected windshield boxes
     # if windshield_outputs:
     #     instances = windshield_outputs[0].get("instances", None)
-    #     print("INSTANCE:")
-    #     print(instances)
+    #     # print("INSTANCE:")
+    #     # print(instances)
     #     if instances and hasattr(instances, "pred_boxes"):
-    #         print("Windshield detected")
-    #         windshield_boxes = instances.pred_boxes.tensor.cpu().numpy()
+    #         print("Sticker detected")
+    #         pred_boxes = instances.pred_boxes.tensor.cpu().numpy()
     #     else:
-    #         print("No windshields detected")
-    #         windshield_boxes = []
+    #         print("No stickers detected")
+    #         pred_boxes = []
     # else:
-    #     windshield_boxes = []
-
+    #     pred_boxes = []
 
     # # detect stickers within coordinates
     # sticker_detections = []
