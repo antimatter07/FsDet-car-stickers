@@ -76,7 +76,7 @@ class CarStickerEvaluator(DatasetEvaluator):
                         }
                         self._predictions.append(prediction_item)
                 else:
-                    # No detections - you can optionally log or just continue
+                    # No detections 
                     self._logger.debug(f"No pred_boxes or other fields for image {input['image_id']}")
 
     def evaluate(self):

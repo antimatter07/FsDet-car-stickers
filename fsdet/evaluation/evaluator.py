@@ -133,8 +133,8 @@ def inference_on_dataset(model, data_loader, evaluator, cfg):
                     image = input["image"]
                     h, w = image.shape[1], image.shape[2]
             
-                    tile_size = 512
-                    stride = 384  # overlap to avoid edge-cut issues
+                    tile_size = 384
+                    stride = 192  # overlap to avoid edge-cut issues
             
                     tiles = []
                     tile_infos = []
