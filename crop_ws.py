@@ -1,4 +1,4 @@
-# Preprocess the training dataset and detect all windshields
+# Preprocess the given dataset and detect all windshields
 # Uses the base FsDet configuration
 # Used config: stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone.yaml
 
@@ -16,14 +16,21 @@ from detectron2.data import MetadataCatalog
 
 import fsdet.data.builtin # registers all datasets
 
-input_folder = "datasets/stickers/stickers_ws_train_31shot_1280/" # train image folder
-output_folder = "datasets/preprocessed_training_data/" # where to save cropped images
-output_json_folder = "datasets/preprocessed_training_annot/" # where to save GT boxes of car stickers
-dataset_name = "tinyonly_top4_stickers_ws_31shot_1280" # registered name of the training dataset
+# for training data
+# input_folder = "datasets/stickers/stickers_ws_train_31shot_1280/" # train image folder
+# input_json = "datasets/stickers_split/stickers_ws_train_31shot_1280.json"
+# output_folder = "datasets/cropped_train_data/" # where to save cropped images
+# output_json_folder = "datasets/cropped_train_annot/" # where to save GT boxes of car stickers
+
+# for test data
+input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder
+input_json = "datasets/stickers/annotations/stickers_ws_31shot_test_1280.json"
+output_folder = "datasets/cropped_test_data/" # where to save cropped images
+output_json_folder = "datasets/cropped_test_annot/" # where to save GT boxes of car stickers
 
 
 parser = argparse.ArgumentParser(description="Run this file with a minimum confidence score")
-parser.add_argument("--conf", type=float, default=0.5, help="minimum confidence score")
+parser.add_argument("--conf", type=float, default=0.7, help="minimum confidence score")
 args = parser.parse_args()
 
 
@@ -75,7 +82,7 @@ def preprocess_image(image_path):
 
 
 # Filter predictions to only include desired class
-# If no confidence is given, only consider those with at least 50% confidence
+# If no confidence is given, only consider those with at least 70% confidence
 def detect_only_class(image, model, class_id):
     with torch.no_grad():
         outputs = model([image])
@@ -142,7 +149,6 @@ def clear_output_folder(folder_path):
 
 # Get all image files from the folder
 image_files = [f for f in os.listdir(input_folder) if f.lower().endswith((".jpg", ".jpeg"))]
-print("> Preprocessing dataset: ", dataset_name)
 print("> Image file count: ", len(image_files))
 
 clear_output_folder(output_folder)
@@ -162,7 +168,7 @@ print(f"> Saved windshield images to {output_folder}")
 
 
 # Get all the training data annotations
-with open("datasets/stickers_split/stickers_ws_train_31shot_1280.json") as f:
+with open(input_json) as f:
     annot_data = json.load(f)
 
 original_images = annot_data["images"]
@@ -232,15 +238,10 @@ for ws_image in ws_images:
             "area": new_area,
             "iscrowd": ann["iscrowd"],
         })
-
-        print("Orig bbox: ", ann["bbox"])
-        print("New bbox: ", new_bbox)
         
-        # -- TBD --
+        # -- TBD (adjusted annotations visual) --
         img = cv2.imread(f"{output_folder}{ws_image['new_filename']}")
-        if img is None:
-            raise FileNotFoundError(f"Failed to load image at {img_path}")
-        cv2.rectangle(img, (rel_x, rel_y), (inter_w, inter_h), (0, 255, 0), 2) 
+        cv2.rectangle(img, (rel_x, rel_y), (rel_x + inter_w, rel_y + inter_h), (0, 255, 0), 2) 
         path = f"datasets/testing/_{i}_{original_filename}.jpg"
         cv2.imwrite(path, img)
         # -- END TBD --
@@ -249,17 +250,15 @@ for ws_image in ws_images:
 
     new_image_id += 1
 
-    break
-
 
 adjusted_json = {
-    "categories": annot_data["categories"],
+    "categories": [cat for cat in annot_data["categories"] if cat["name"] != "windshield"], # remove windshield
     "images": new_images,
     "annotations": new_annotations
 }
 
 # Save adjusted annotations
-with open(f"{output_json_folder}preprocessed_annot.json", "w") as f:
+with open(f"{output_json_folder}cropped_annot.json", "w") as f:
     json.dump(adjusted_json, f)
 
 

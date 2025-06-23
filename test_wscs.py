@@ -19,8 +19,10 @@ from detectron2.utils.visualizer import Visualizer
 
 import fsdet.data.builtin # registers all datasets
 
+
+# Test the FULL IMAGES
 input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder
-output_folder = "results/try_windshield_results/" # output to save processed images
+output_folder = "results/test_wscs_results/" # output to save processed images
 dataset_name = "stickers_ws_31shot_1280_test_tinyonly_top4" # registered name of the test dataset
 
 os.makedirs(output_folder, exist_ok=True)
@@ -29,9 +31,6 @@ torch.cuda.empty_cache()
 # os.environ["CUDA_VISIBLE_DEVICES"] = "3"  # SET GPU HERE
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("CURRENT DEVICE: ", device)
-
-# Register test dataset. run this if builtin.py is not run
-# register_meta_stickers("datasets/stickers/annotations/stickers_ws_31shot_test_1280.json", "datasets/stickers/stickers_ws_all", _get_builtin_metadata("stickers_fewshot"), "stickers_ws_31shot_1280_test_tinyonly_top4")
 
 # Load FsDet model
 def load_model(config_path, weights_path):
@@ -52,7 +51,8 @@ def load_model(config_path, weights_path):
 # best ws+stickers config : stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone.yaml
 ws_model = load_model("configs/stickers-detection/stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone.yaml",
                     "checkpoints/stickers/stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone/model_final.pth")
-# cs_model = load_model("configs/stickers-detection/stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone.yaml")
+cs_model = load_model("configs/stickers-detection/ws_then_cs.yaml", "datasets/testing/model_final.pth")
+
 
 # converts OpenCV image to tensor for GeneralizedRCNN input format
 def preprocess_image(image_path):
@@ -74,7 +74,6 @@ def preprocess_image(image_path):
 
 
 # Filter predictions to only include desired class
-# NOTE! this is used to separate the stickers, delete later if there are separate models for it
 def detect_only_class(img, model, class_id):
     with torch.no_grad():
         outputs = model([img])
@@ -96,7 +95,6 @@ def create_empty_instances(height, width):
     return empty_instances
 
 
-#TODO: change single image to all images once it;s working
 def detect_ws_then_cs(img, ws_model, cs_model, metadata):
     # Run inference for windshields
     # with torch.no_grad():
@@ -119,11 +117,6 @@ def detect_ws_then_cs(img, ws_model, cs_model, metadata):
         # Crop the region
         crop = image_np[y1:y2, x1:x2]
         crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
-
-        # for tsting only, delete later
-        output_path =  f"{output_folder}{i}_test_crop.jpg"
-        cv2.imwrite(output_path, cv2.cvtColor(crop_rgb, cv2.COLOR_RGB2BGR))
-        print(f"Saved image output to {output_path}")
         
         # Prepare input dict for sticker model
         crop_tensor = torch.from_numpy(crop_rgb.astype(np.float32) / 255.0).permute(2, 0, 1).to(device)
@@ -140,7 +133,7 @@ def detect_ws_then_cs(img, ws_model, cs_model, metadata):
         cs_instances = detect_only_class(cs_input, cs_model, 4)
 
         if len(cs_instances) == 0:
-            print(f"No stickers detected in windshield box {i}")
+            # print(f"No stickers detected in windshield box {i}")
             continue
 
         # Offset bounding boxes to original coordinates
@@ -188,6 +181,23 @@ def visualize_result(image_path, ws_instances, cs_instances):
     print(f"Saved image output to {output_path}")
 
 
+# Delete all files and subfolders and the ouput folder
+def clear_output_folder():
+    if os.path.exists(output_folder):
+        for filename in os.listdir(output_folder):
+            file_path = os.path.join(output_folder, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path) 
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+            except Exception as e:
+                print(f"Failed to delete {file_path}. Reason: {e}")
+    else:
+        os.makedirs(output_folder)
+
+
+clear_output_folder()
 
 # Get all image files from the folder
 image_files = [f for f in os.listdir(input_folder) if f.lower().endswith((".jpg", ".jpeg"))]
@@ -198,10 +208,8 @@ for image_filename in image_files:
     image_path = os.path.join(input_folder, image_filename)
     image_tensor = preprocess_image(image_path)
 
-    ws_instances, cs_instances = detect_ws_then_cs(image_tensor, ws_model, ws_model, MetadataCatalog.get(dataset_name))
+    ws_instances, cs_instances = detect_ws_then_cs(image_tensor, ws_model, cs_model, MetadataCatalog.get(dataset_name))
 
     visualize_result(image_path, ws_instances, cs_instances) 
     
-    break
-
-# Display accuracy result
+# TODO: Display accuracy result

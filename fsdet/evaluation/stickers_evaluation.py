@@ -207,7 +207,7 @@ class CarStickerEvaluator(DatasetEvaluator):
 
         #Apply non maximum suppression for splice and save json file and eval resuuts
         if self.cfg.SPLICE:
-            iou_thresh = 0.5
+            iou_thresh = 0.3
             prediction_path = 'car_sticker_predictions.json'
             #preds = load_predictions(prediction_path)
             # Apply NMS 

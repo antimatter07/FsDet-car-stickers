@@ -1,7 +1,8 @@
 _BASE_: "../Base-RCNN-FPN.yaml"
 MODEL:
 # checkpoints/stickers/stickers_31shot_tinyonly_top4_8_random_all_5000iters_lr001_unfreeze/checkpoint
-#
+# copied the best config, then changed the dataset to the cropped windshields
+# weights for tiny only top 4 + stickers: checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot_tinyonly_top4classes/model_reset_surgery.pth
   WEIGHTS: "checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot_tinyonly_top4classes/model_reset_surgery.pth"
   MASK_ON: False
   RESNETS:
@@ -10,9 +11,8 @@ MODEL:
     NUM_CLASSES: 5
     BATCH_SIZE_PER_IMAGE: 256
     OUTPUT_LAYER: "CosineSimOutputLayers"
-    NMS_THRESH_TEST: 0.4
   ROI_BOX_HEAD:
-    POOLER_RESOLUTION: 7
+    POOLER_RESOLUTION: 14
   RPN:
    POST_NMS_TOPK_TRAIN: 2000
  #   FREEZE_FEAT: True
@@ -23,17 +23,17 @@ MODEL:
  # PROPOSAL_GENERATOR:
  #   FREEZE: True
 
+  
 DATASETS:
-  #TRAIN: ('30_tinyonly',)
-  TRAIN: ('tinyonly_top4_stickers_10shot_1280', '30_tinyonly_top4')
-  TEST: ('stickers_10shot_1280_test_tinyonly_top4',)
+  TRAIN: ('crop_stickers_tinyonly_top4_train', '30_tinyonly_top4')
+  TEST: ('crop_stickers_tinyonly_top4_test',)
+
 SOLVER:
   IMS_PER_BATCH: 8
   BASE_LR: 0.001
   STEPS: (216000,)
-  MAX_ITER: 2000
+  MAX_ITER: 3000 # <- this val is for testing, actual max_iter is 3000
   CHECKPOINT_PERIOD: 1000
   WARMUP_ITERS: 10
 # checkpoints/stickers/stickers_31shot_tinyonly_top4_8_random_all_5000iters_lr001_unfreeze/checkpoint
-OUTPUT_DIR: "checkpoints/stickers/stickers_10shot_tinyonly_top4_8_random_all_2000iters_lr001_unfreeze_r-nms_fbackbone_nms4"
-SPLICE: True 
+OUTPUT_DIR: "results/train_wscs_results

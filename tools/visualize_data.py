@@ -15,6 +15,7 @@ from detectron2.utils.logger import setup_logger
 from detectron2.utils.visualizer import Visualizer
 from PIL import Image
 
+import fsdet.data.builtin
 
 def setup(args):
     cfg = get_cfg()

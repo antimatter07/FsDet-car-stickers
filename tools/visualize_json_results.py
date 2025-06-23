@@ -15,7 +15,6 @@ from detectron2.utils.logger import setup_logger
 from detectron2.utils.visualizer import Visualizer
 from fsdet.utils.file_io import PathManager
 
-
 def create_instances(predictions, image_size):
     ret = Instances(image_size)
 
@@ -65,7 +64,7 @@ if __name__ == "__main__":
         predictions = json.load(f)
 
     pred_by_image = defaultdict(list)
-    for p in predictions:
+    for p in predictions: 
         pred_by_image[p["image_id"]].append(p)
 
     dicts = list(DatasetCatalog.get(args.dataset))

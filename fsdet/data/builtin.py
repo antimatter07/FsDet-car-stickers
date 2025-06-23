@@ -312,6 +312,15 @@ register_meta_coco("30_tinyonly_top4",
                   os.path.join("datasets/coco/trainval2014"),
                   os.path.join("datasets/cocosplit/top4_tinyonly.json"),
                   )
+
+
+# CROPPED WINDSHIELD DATASET
+register_meta_stickers("datasets/cropped_train_annot/cropped_annot.json", "datasets/cropped_train_data",
+                       _get_builtin_metadata("stickers_fewshot"), "crop_stickers_tinyonly_top4_train")
+register_meta_stickers("datasets/cropped_test_annot/cropped_annot.json", "datasets/cropped_test_data",
+                       _get_builtin_metadata("stickers_fewshot"), "crop_stickers_tinyonly_top4_test")
+
+
 #31shot 1280
 register_meta_stickers("datasets/stickers_split/stickers_train_31shot_1280.json", "datasets/stickers/stickers_all", _get_builtin_metadata("stickers_fewshot"), "stickers_31shot_1280")
 register_meta_stickers("datasets/stickers_split/stickers_train_31shot_1280.json", "datasets/stickers/stickers_all", _get_builtin_metadata("stickers_fewshot"), "tinyonly_stickers_31shot_1280")
