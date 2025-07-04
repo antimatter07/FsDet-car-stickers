@@ -16,17 +16,17 @@ from detectron2.data import MetadataCatalog
 
 import fsdet.data.builtin # registers all datasets
 
-# for training data
-# input_folder = "datasets/stickers/stickers_ws_train_31shot_1280/" # train image folder
-# input_json = "datasets/stickers_split/stickers_ws_train_31shot_1280.json"
-# output_folder = "datasets/cropped_train_data/" # where to save cropped images
-# output_json_folder = "datasets/cropped_train_annot/" # where to save GT boxes of car stickers
+# FOR TRAINING DATA
+input_folder = "datasets/stickers/stickers_ws_train_31shot_1280/" # train image folder
+input_json = "datasets/stickers_split/stickers_ws_train_31shot_1280.json"
+output_folder = "datasets/cropped_train_data/" # where to save cropped images
+output_json_folder = "datasets/cropped_train_annot/" # where to save GT boxes of car stickers
 
-# for test data
-input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder
-input_json = "datasets/stickers/annotations/stickers_ws_31shot_test_1280.json"
-output_folder = "datasets/cropped_test_data/" # where to save cropped images
-output_json_folder = "datasets/cropped_test_annot/" # where to save GT boxes of car stickers
+# FOR TEST DATA
+# input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder
+# input_json = "datasets/stickers/annotations/stickers_ws_31shot_test_1280.json"
+# output_folder = "datasets/cropped_test_data/" # where to save cropped images
+# output_json_folder = "datasets/cropped_test_annot/" # where to save GT boxes of car stickers
 
 
 parser = argparse.ArgumentParser(description="Run this file with a minimum confidence score")

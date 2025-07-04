@@ -22,6 +22,8 @@ MODEL:
  #   FREEZE: True
  # PROPOSAL_GENERATOR:
  #   FREEZE: True
+ ANCHOR_GENERATOR:
+  SIZES: [[8], [16], [32]]
 
   
 DATASETS:
@@ -32,8 +34,8 @@ SOLVER:
   IMS_PER_BATCH: 8
   BASE_LR: 0.001
   STEPS: (216000,)
-  MAX_ITER: 3000 # <- this val is for testing, actual max_iter is 3000
+  MAX_ITER: 1000  # <- this val is for testing, actual max_iter is 3000
   CHECKPOINT_PERIOD: 1000
   WARMUP_ITERS: 10
 # checkpoints/stickers/stickers_31shot_tinyonly_top4_8_random_all_5000iters_lr001_unfreeze/checkpoint
-OUTPUT_DIR: "results/train_wscs_results
+OUTPUT_DIR: "results/train_wscs_results"

@@ -24,15 +24,15 @@ MODEL:
  #   FREEZE: True
 
 DATASETS:
-  #TRAIN: ('30_tinyonly',)sss
+  #TRAIN: ('30_tinyonly',)
   TRAIN: ('tinyonly_top4_stickers_10shot_1280', '30_tinyonly_top4')
   TEST: ('stickers_10shot_1280_test_tinyonly_top4',)
 SOLVER:
   IMS_PER_BATCH: 8
   BASE_LR: 0.001
   STEPS: (216000,)
-  MAX_ITER: 2000
+  MAX_ITER: 4000
   CHECKPOINT_PERIOD: 1000
   WARMUP_ITERS: 10
 # checkpoints/stickers/stickers_31shot_tinyonly_top4_8_random_all_5000iters_lr001_unfreeze/checkpoint
-OUTPUT_DIR: "checkpoints/stickers/stickers_10shot_tinyonly_top4_8_random_all_2000iters_lr001_unfreeze_r-nms_fbackbone_nms4"
+OUTPUT_DIR: "checkpoints/stickers/stickers_10shot_tinyonly_top4_8_random_all_4000iters_lr001_unfreeze_r-nms_fbackbone_nms4"
