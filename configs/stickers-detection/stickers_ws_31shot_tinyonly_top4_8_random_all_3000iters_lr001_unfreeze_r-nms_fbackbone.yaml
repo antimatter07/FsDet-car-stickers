@@ -28,10 +28,10 @@ DATASETS:
   # stickers_31shot_1280_test_top4
   TEST: ('stickers_ws_31shot_1280_test_tinyonly_top4',)
 SOLVER:
-  IMS_PER_BATCH: 8
+  IMS_PER_BATCH: 2
   BASE_LR: 0.001
   STEPS: (216000,)
-  MAX_ITER: 3000
+  MAX_ITER: 1000
   CHECKPOINT_PERIOD: 1000
   WARMUP_ITERS: 10
 # checkpoints/stickers/stickers_31shot_tinyonly_top4_8_random_all_5000iters_lr001_unfreeze/checkpoint

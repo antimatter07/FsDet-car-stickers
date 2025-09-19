@@ -1,5 +1,4 @@
 # Preprocess the given dataset and detect all windshields
-# Uses the base FsDet configuration
 # Used config: stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone.yaml
 
 import os
@@ -12,21 +11,20 @@ import json
 from fsdet.config import get_cfg
 from fsdet.modeling import GeneralizedRCNN
 from fsdet.checkpoint import DetectionCheckpointer
-from detectron2.data import MetadataCatalog
 
 import fsdet.data.builtin # registers all datasets
 
 # FOR TRAINING DATA
 input_folder = "datasets/stickers/stickers_ws_train_31shot_1280/" # train image folder
 input_json = "datasets/stickers_split/stickers_ws_train_31shot_1280.json"
-output_folder = "datasets/cropped_train_data/" # where to save cropped images
-output_json_folder = "datasets/cropped_train_annot/" # where to save GT boxes of car stickers
+output_folder = "datasets/cropped_train_data_2/" # where to save cropped images
+output_json_folder = "datasets/cropped_train_annot_2/" # where to save GT boxes of car stickers
 
 # FOR TEST DATA
-# input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder
-# input_json = "datasets/stickers/annotations/stickers_ws_31shot_test_1280.json"
-# output_folder = "datasets/cropped_test_data/" # where to save cropped images
-# output_json_folder = "datasets/cropped_test_annot/" # where to save GT boxes of car stickers
+input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder
+input_json = "datasets/stickers/annotations/stickers_ws_31shot_test_1280.json"
+output_folder = "datasets/cropped_test_data_2/" # where to save cropped images
+output_json_folder = "datasets/cropped_test_annot_2/" # where to save GT boxes of car stickers
 
 
 parser = argparse.ArgumentParser(description="Run this file with a minimum confidence score")
@@ -39,6 +37,7 @@ torch.cuda.empty_cache()
 
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "3"  # SET GPU HERE
+# device = "cpu"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("CURRENT DEVICE: ", device)
 
@@ -63,7 +62,7 @@ ws_model = load_model("configs/stickers-detection/stickers_ws_31shot_tinyonly_to
 
 
 # converts OpenCV image to tensor for GeneralizedRCNN input format
-def preprocess_image(image_path):
+def preprocess_image(image_path, device):
     image_bgr = cv2.imread(image_path)
     
     if image_bgr is None:
@@ -72,21 +71,32 @@ def preprocess_image(image_path):
     image = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
     image_tensor = torch.from_numpy(image.astype("float32")).permute(2, 0, 1).to(device)
 
-    input = {
+    return {
         "image": image_tensor,
         "height": image_tensor.shape[1],
         "width": image_tensor.shape[2],
     }
 
-    return input
-
 
 # Filter predictions to only include desired class
 # If no confidence is given, only consider those with at least 70% confidence
 def detect_only_class(image, model, class_id):
+
+    image_tensor = image["image"]
+    if not image_tensor.is_floating_point():
+        image_tensor = image_tensor.float()
+    
+    # image_tensor = image_tensor.to(model_device)
+
+    inputs = {
+        "image": image_tensor,
+        "height": image["height"],
+        "width": image["width"]
+    }
+    
     with torch.no_grad():
-        outputs = model([image])
-        instances = outputs[0]["instances"].to(device)
+        outputs = model([inputs])
+        instances = outputs[0]["instances"]
 
     conf = min(args.conf, 1.0)
     mask = (instances.pred_classes == class_id) & (instances.scores >= conf)
@@ -159,7 +169,7 @@ ws_images = []
 
 for image_filename in image_files:
     image_path = os.path.join(input_folder, image_filename)
-    image_tensor = preprocess_image(image_path)
+    image_tensor = preprocess_image(image_path, device)
 
     ws_images.extend(detect_ws(image_filename, image_tensor, ws_model))
 
@@ -167,7 +177,7 @@ for image_filename in image_files:
 print(f"> Saved windshield images to {output_folder}")
 
 
-# Get all the training data annotations
+# Get all the data annotations
 with open(input_json) as f:
     annot_data = json.load(f)
 
@@ -208,7 +218,12 @@ for ws_image in ws_images:
             continue
             
         # Check if the sticker is within the WS region
-        if x + w < x_min_ws or x > x_max_ws or y + h < y_min_ws or y > y_max_ws:
+        # includes every sticker GT box that overlap with the cropped windshield
+        # if x + w < x_min_ws or x > x_max_ws or y + h < y_min_ws or y > y_max_ws:
+        #     continue
+
+        # excludes any sticker GT box that goes outside the cropped 
+        if x < x_min_ws or x + w > x_max_ws or y < y_min_ws or y + h > y_max_ws:
             continue
 
         # Check for clipping / intersection box
