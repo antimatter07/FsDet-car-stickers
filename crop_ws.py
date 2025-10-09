@@ -15,16 +15,16 @@ from fsdet.checkpoint import DetectionCheckpointer
 import fsdet.data.builtin # registers all datasets
 
 # FOR TRAINING DATA
-input_folder = "datasets/stickers/stickers_ws_train_31shot_1280/" # train image folder
-input_json = "datasets/stickers_split/stickers_ws_train_31shot_1280.json"
-output_folder = "datasets/cropped_train_data_2/" # where to save cropped images
-output_json_folder = "datasets/cropped_train_annot_2/" # where to save GT boxes of car stickers
+input_folder = "datasets/stickers/stickers_ws_train_10shot_1280/" # train image folder
+input_json = "datasets/stickers_split/stickers_ws_train_10shot_1280.json"
+output_folder = "datasets/cropped_train_data_10shot/" # where to save cropped images
+output_json_folder = "datasets/cropped_train_annot_10shot/" # where to save GT boxes of car stickers
 
 # FOR TEST DATA
-input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder
-input_json = "datasets/stickers/annotations/stickers_ws_31shot_test_1280.json"
-output_folder = "datasets/cropped_test_data_2/" # where to save cropped images
-output_json_folder = "datasets/cropped_test_annot_2/" # where to save GT boxes of car stickers
+# input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder
+# input_json = "datasets/stickers/annotations/stickers_ws_31shot_test_1280.json"
+# output_folder = "datasets/cropped_test_data/" # where to save cropped images
+# output_json_folder = "datasets/cropped_test_annot/" # where to save GT boxes of car stickers
 
 
 parser = argparse.ArgumentParser(description="Run this file with a minimum confidence score")
@@ -107,10 +107,7 @@ def detect_only_class(image, model, class_id):
 
 # detects all windshields in an image
 def detect_ws(image_filename, image, ws_model):
-    # Run inference for windshields
-    # with torch.no_grad():
-    #     ws_outputs = ws_model([image])
-    #     ws_instances = ws_outputs[0]["instances"]
+
     with torch.no_grad():
         ws_instances = detect_only_class(image, ws_model, 5)
     
@@ -213,17 +210,18 @@ for ws_image in ws_images:
     for i, ann in enumerate(anns_for_image):
         x, y, w, h = ann["bbox"]
 
-        # Check if the bbox is a sticker (category_id=91)
+        # Check if the bbox is a sticker (category_id=91 || category_id=1)
         if ann["category_id"] != 91:
-            continue
-            
+            continue 
+        
         # Check if the sticker is within the WS region
         # includes every sticker GT box that overlap with the cropped windshield
         # if x + w < x_min_ws or x > x_max_ws or y + h < y_min_ws or y > y_max_ws:
         #     continue
-
-        # excludes any sticker GT box that goes outside the cropped 
+        
+        # excludes any sticker GT box that goes outside the cropped windshield
         if x < x_min_ws or x + w > x_max_ws or y < y_min_ws or y + h > y_max_ws:
+            print("car sticker outside windshield")
             continue
 
         # Check for clipping / intersection box

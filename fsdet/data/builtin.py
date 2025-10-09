@@ -316,9 +316,17 @@ register_meta_coco("30_tinyonly_top4",
 
 # CROPPED WINDSHIELD DATASET
 register_meta_stickers("datasets/cropped_train_annot/cropped_annot.json", "datasets/cropped_train_data",
-                       _get_builtin_metadata("stickers_fewshot"), "crop_stickers_tinyonly_top4_train")
+                       _get_builtin_metadata("stickers_fewshot"), "crop_stickers_tinyonly_top4_train") #31shot
 register_meta_stickers("datasets/cropped_test_annot/cropped_annot.json", "datasets/cropped_test_data",
-                       _get_builtin_metadata("stickers_fewshot"), "crop_stickers_tinyonly_top4_test")
+                       _get_builtin_metadata("stickers_fewshot"), "crop_stickers_tinyonly_top4_test") # test set
+
+register_meta_stickers("datasets/cropped_train_annot_2shot/cropped_annot.json", "datasets/cropped_train_data_2shot",
+                       _get_builtin_metadata("stickers_fewshot"), "crop_stickers_tinyonly_top4_train_2shot")
+register_meta_stickers("datasets/cropped_train_annot_5shot/cropped_annot.json", "datasets/cropped_train_data_5shot",
+                       _get_builtin_metadata("stickers_fewshot"), "crop_stickers_tinyonly_top4_train_5shot")
+register_meta_stickers("datasets/cropped_train_annot_10shot/cropped_annot.json", "datasets/cropped_train_data_10shot",
+                       _get_builtin_metadata("stickers_fewshot"), "crop_stickers_tinyonly_top4_train_10shot")
+
 
 
 #31shot 1280

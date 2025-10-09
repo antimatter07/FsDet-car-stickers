@@ -10,6 +10,13 @@ from torch import nn
 from detectron2.modeling.backbone import ResNet
 from detectron2.modeling import BACKBONE_REGISTRY
 from detectron2.modeling.backbone.fpn import build_resnet_fpn_backbone
+from detectron2.modeling.backbone.resnet import build_resnet_backbone
+
+
+from detectron2.layers import Conv2d, ShapeSpec, get_norm
+from detectron2.modeling.backbone import Backbone
+
+import math
 
 
 from fsdet.modeling.roi_heads import build_roi_heads
@@ -289,3 +296,4 @@ def build_dilated_resnet_fpn_backbone(cfg, input_shape):
         )
 
     return backbone
+

@@ -2,3 +2,4 @@ from .build import META_ARCH_REGISTRY, build_model  # isort:skip
 
 # import all the meta_arch, so they will be registered
 from .rcnn import GeneralizedRCNN, ProposalNetwork, build_dilated_resnet_fpn_backbone
+from .fpn import build_weighted_resnet_fpn_backbone

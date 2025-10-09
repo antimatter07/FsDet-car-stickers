@@ -13,7 +13,7 @@ DATASETS:
   TEST:
   - crop_stickers_tinyonly_top4_test
   TRAIN:
-  - crop_stickers_tinyonly_top4_train_5shot
+  - crop_stickers_tinyonly_top4_train
   - 30_tinyonly_top4
 GLOBAL:
   HACK: 1.0
@@ -54,7 +54,7 @@ MODEL:
   BACKBONE:
     FREEZE: false
     FREEZE_AT: 5
-    NAME: build_resnet_fpn_backbone
+    NAME: build_weighted_resnet_fpn_backbone
   DEVICE: cuda
   FPN:
     FUSE_TYPE: sum
@@ -272,14 +272,14 @@ MODEL:
     NUM_CLASSES: 54
   WEIGHTS: checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot_tinyonly_top4classes/model_reset_surgery.pth
 MUTE_HEADER: true
-OUTPUT_DIR: results/train_wscs_results
+OUTPUT_DIR: results/train_wscs_weighted-fpn_results
 SEED: -1
 SOLVER:
   AMP:
     ENABLED: false
   BASE_LR: 0.001
   BIAS_LR_FACTOR: 1.0
-  CHECKPOINT_PERIOD: 100
+  CHECKPOINT_PERIOD: 200
   CLIP_GRADIENTS:
     CLIP_TYPE: value
     CLIP_VALUE: 1.0
@@ -288,7 +288,7 @@ SOLVER:
   GAMMA: 0.1
   IMS_PER_BATCH: 2
   LR_SCHEDULER_NAME: WarmupMultiStepLR
-  MAX_ITER: 1000
+  MAX_ITER: 2000
   MOMENTUM: 0.9
   NESTEROV: false
   REFERENCE_WORLD_SIZE: 0
