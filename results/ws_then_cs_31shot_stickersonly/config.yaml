@@ -11,10 +11,9 @@ DATASETS:
   PROPOSAL_FILES_TEST: []
   PROPOSAL_FILES_TRAIN: []
   TEST:
-  - crop_stickers_tinyonly_top4_test
+  - crop_stickers_only_test
   TRAIN:
-  - crop_stickers_tinyonly_top4_train_10shot
-  - 30_tinyonly_top4
+  - crop_stickers_only_train
 GLOBAL:
   HACK: 1.0
 INPUT:
@@ -193,7 +192,7 @@ MODEL:
     - 0.5
     NAME: StandardROIHeads
     NMS_THRESH_TEST: 0.5
-    NUM_CLASSES: 5
+    NUM_CLASSES: 1
     OUTPUT_LAYER: CosineSimOutputLayers
     POSITIVE_FRACTION: 0.25
     PROPOSAL_APPEND_GT: true
@@ -270,9 +269,9 @@ MODEL:
     NAME: SemSegFPNHead
     NORM: GN
     NUM_CLASSES: 54
-  WEIGHTS: checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot_tinyonly_top4classes/model_reset_surgery.pth
+  WEIGHTS: checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot/stickersonly/model_reset_surgery.pth
 MUTE_HEADER: true
-OUTPUT_DIR: results/train_wscs_results
+OUTPUT_DIR: results/ws_then_cs_31shot_stickersonly
 SEED: -1
 SOLVER:
   AMP:
@@ -288,7 +287,7 @@ SOLVER:
   GAMMA: 0.1
   IMS_PER_BATCH: 2
   LR_SCHEDULER_NAME: WarmupMultiStepLR
-  MAX_ITER: 1000
+  MAX_ITER: 2000
   MOMENTUM: 0.9
   NESTEROV: false
   REFERENCE_WORLD_SIZE: 0

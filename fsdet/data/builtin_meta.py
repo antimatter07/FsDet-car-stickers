@@ -543,6 +543,8 @@ CONTIGUOUS_COCO_TINYONLY_TOP4_WS = {10: 0, 37: 1, 38: 2, 90: 3, 91: 4, 92: 5}
 
 CONTIGUOUS_STICKERS_WS = {91: 0, 92: 1}
 
+CONTIGUOUS_STICKERS_ONLY = {91: 0}
+
 
 def _get_coco_instances_meta():
     thing_ids = [k["id"] for k in COCO_CATEGORIES if k["isthing"] == 1]
@@ -630,7 +632,8 @@ def _get_stickers_novel_instances_meta():
         "tinyonly_stickers_id_to_contiguous_id": CONTIGUOUS_STICKERS_TINYONLY,
         "tinyonly_top4_stickers_id_to_contiguous_id": CONTIGUOUS_COCO_TINYONLY_TOP4,
         "tinyonly_top4_stickers_ws_id_to_contiguous_id": CONTIGUOUS_COCO_TINYONLY_TOP4_WS,
-        "stickers_ws": CONTIGUOUS_STICKERS_WS
+        "stickers_ws": CONTIGUOUS_STICKERS_WS,
+        "stickers_only": CONTIGUOUS_STICKERS_ONLY
     }
     return ret
     

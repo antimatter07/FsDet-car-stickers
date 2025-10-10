@@ -13,7 +13,7 @@ DATASETS:
   TEST:
   - crop_stickers_tinyonly_top4_test
   TRAIN:
-  - crop_stickers_tinyonly_top4_train_10shot
+  - crop_stickers_tinyonly_top4_train
   - 30_tinyonly_top4
 GLOBAL:
   HACK: 1.0
@@ -26,11 +26,12 @@ INPUT:
     TYPE: relative_range
   FORMAT: BGR
   MASK_FORMAT: polygon
-  MAX_SIZE_TEST: 1200
-  MAX_SIZE_TRAIN: 1200
-  MIN_SIZE_TEST: 800
+  MAX_SIZE_TEST: 1600
+  MAX_SIZE_TRAIN: 1600
+  MIN_SIZE_TEST: 1200
   MIN_SIZE_TRAIN:
-  - 800
+  - 1024
+  - 1200
   MIN_SIZE_TRAIN_SAMPLING: choice
   RANDOM_FLIP: horizontal
 MODEL:
@@ -272,14 +273,14 @@ MODEL:
     NUM_CLASSES: 54
   WEIGHTS: checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot_tinyonly_top4classes/model_reset_surgery.pth
 MUTE_HEADER: true
-OUTPUT_DIR: results/train_wscs_results
+OUTPUT_DIR: results/ws_then_cs_31shot
 SEED: -1
 SOLVER:
   AMP:
     ENABLED: false
   BASE_LR: 0.001
   BIAS_LR_FACTOR: 1.0
-  CHECKPOINT_PERIOD: 100
+  CHECKPOINT_PERIOD: 500
   CLIP_GRADIENTS:
     CLIP_TYPE: value
     CLIP_VALUE: 1.0
@@ -288,7 +289,7 @@ SOLVER:
   GAMMA: 0.1
   IMS_PER_BATCH: 2
   LR_SCHEDULER_NAME: WarmupMultiStepLR
-  MAX_ITER: 1000
+  MAX_ITER: 3000
   MOMENTUM: 0.9
   NESTEROV: false
   REFERENCE_WORLD_SIZE: 0

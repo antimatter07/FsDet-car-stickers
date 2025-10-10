@@ -30,7 +30,6 @@ INPUT:
 
   
 DATASETS:
-  # TRAIN: ('crop_stickers_tinyonly_top4_train', '30_tinyonly_top4') < original 31 shot
   TRAIN: ('crop_stickers_tinyonly_top4_train', '30_tinyonly_top4')
   TEST: ('crop_stickers_tinyonly_top4_test',)
 
@@ -38,8 +37,8 @@ SOLVER:
   IMS_PER_BATCH: 2
   BASE_LR: 0.001
   STEPS: (216000,)
-  MAX_ITER: 1000 
-  CHECKPOINT_PERIOD: 100
+  MAX_ITER: 3000 
+  CHECKPOINT_PERIOD: 500
   WARMUP_ITERS: 10
 # checkpoints/stickers/stickers_31shot_tinyonly_top4_8_random_all_5000iters_lr001_unfreeze/checkpoint
-OUTPUT_DIR: "results/train_wscs_results"
+OUTPUT_DIR: "results/ws_then_cs_31shot"

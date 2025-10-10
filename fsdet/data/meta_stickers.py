@@ -21,6 +21,8 @@ def load_stickers_json(json_file, image_root, metadata, dataset_name):
 
     is_top4 = "top4" in dataset_name
     has_windshield = "ws" in dataset_name
+
+    stickers_only = "stickers_only" in dataset_name
     
     with open(json_file, "r") as f:
         dataset_info = json.load(f)
@@ -42,7 +44,9 @@ def load_stickers_json(json_file, image_root, metadata, dataset_name):
 
     # tinyonly_top4_stickers_id_to_contiguous_id
     print("DATASET STICKERS: " + dataset_name)
-    if is_tinyonly and is_top4 and has_windshield:
+    if stickers_only:
+        IDMAP = metadata["stickers_only"]
+    elif is_tinyonly and is_top4 and has_windshield:
         IDMAP = metadata["tinyonly_top4_stickers_ws_id_to_contiguous_id"]
     elif has_windshield:
         IDMAP = metadata["stickers_ws"]

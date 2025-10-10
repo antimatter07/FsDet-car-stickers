@@ -221,7 +221,6 @@ for ws_image in ws_images:
         
         # excludes any sticker GT box that goes outside the cropped windshield
         if x < x_min_ws or x + w > x_max_ws or y < y_min_ws or y + h > y_max_ws:
-            print("car sticker outside windshield")
             continue
 
         # Check for clipping / intersection box
