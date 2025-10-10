@@ -53,7 +53,7 @@ MODEL:
   BACKBONE:
     FREEZE: false
     FREEZE_AT: 5
-    NAME: build_resnet_fpn_backbone
+    NAME: build_weighted_resnet_fpn_backbone
   DEVICE: cuda
   FPN:
     FUSE_TYPE: sum
@@ -287,7 +287,7 @@ SOLVER:
   GAMMA: 0.1
   IMS_PER_BATCH: 2
   LR_SCHEDULER_NAME: WarmupMultiStepLR
-  MAX_ITER: 2000
+  MAX_ITER: 1000
   MOMENTUM: 0.9
   NESTEROV: false
   REFERENCE_WORLD_SIZE: 0
