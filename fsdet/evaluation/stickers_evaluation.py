@@ -43,6 +43,8 @@ class CarStickerEvaluator(DatasetEvaluator):
         json_file = PathManager.get_local_path(self._metadata.json_file)
         self._json_file = json_file
 
+        self._results = {}
+
     def reset(self):
         self._predictions = []
 
@@ -98,8 +100,11 @@ class CarStickerEvaluator(DatasetEvaluator):
             with PathManager.open(file_path, "wb") as f:
                 torch.save(self._predictions, f)
 
-        self._results = OrderedDict()
-        self._eval_predictions()
+        # self._results = OrderedDict()
+        # self._eval_predictions()
+
+        results = self._eval_predictions()
+        self._results = results
 
         return copy.deepcopy(self._results)
 
@@ -108,6 +113,26 @@ class CarStickerEvaluator(DatasetEvaluator):
       
         # self._results.update(ap_result)
         # self._logger.info("Car sticker evaluation results: {}".format(self._results))
+        results = OrderedDict()
+        if hasattr(self, "coco_eval_overall"):
+            coco_eval = self.coco_eval_overall
+            stats = coco_eval.stats
+    
+            results["bbox"] = {
+                "AP": float(stats[0]),
+                "AP50": float(stats[1]),
+                "AP75": float(stats[2]),
+                "APs": float(stats[3]),
+                "APm": float(stats[4]),
+                "APl": float(stats[5]),
+            }
+    
+        if hasattr(self, "overall_summary"):
+            results["overall_summary"] = self.overall_summary
+        if hasattr(self, "per_class_results"):
+            results["per_class_summary"] = self.per_class_results
+    
+        return results
 
     def _prepare_annotations(self):
         gt_annotations = []
@@ -268,9 +293,10 @@ class CarStickerEvaluator(DatasetEvaluator):
         
         
 
-      
+        self.coco_eval_overall = coco_eval_overall
         self._results["overall"] = overall_summary
         self._results["per_class"] = per_class_results
+
 
 def _evaluate_predictions_on_coco(
         coco_gt, coco_results, iou_type, catIds=None

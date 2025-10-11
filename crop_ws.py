@@ -15,10 +15,10 @@ from fsdet.checkpoint import DetectionCheckpointer
 import fsdet.data.builtin # registers all datasets
 
 # FOR TRAINING DATA
-input_folder = "datasets/stickers/stickers_ws_train_10shot_1280/" # train image folder
-input_json = "datasets/stickers_split/stickers_ws_train_10shot_1280.json"
-output_folder = "datasets/cropped_train_data_10shot/" # where to save cropped images
-output_json_folder = "datasets/cropped_train_annot_10shot/" # where to save GT boxes of car stickers
+input_folder = "datasets/stickers/stickers_ws_train_31shot_1280/" # train image folder
+input_json = "datasets/stickers_split/stickers_ws_train_31shot_1280.json"
+output_folder = "datasets/cropped_train_data/" # where to save cropped images
+output_json_folder = "datasets/cropped_train_annot/" # where to save GT boxes of car stickers
 
 # FOR TEST DATA
 # input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder

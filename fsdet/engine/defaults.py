@@ -569,7 +569,7 @@ class DefaultTrainer(SimpleTrainer):
                         dataset_name
                     )
                 )
-                print_csv_format(results_i)
+                # print_csv_format(results_i)
 
         if len(results) == 1:
             results = list(results.values())[0]

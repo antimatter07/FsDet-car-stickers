@@ -11,10 +11,9 @@ DATASETS:
   PROPOSAL_FILES_TEST: []
   PROPOSAL_FILES_TRAIN: []
   TEST:
-  - crop_stickers_tinyonly_top4_test
+  - crop_stickers_only_test
   TRAIN:
-  - crop_stickers_tinyonly_top4_train
-  - 30_tinyonly_top4
+  - crop_stickers_only_train
 GLOBAL:
   HACK: 1.0
 INPUT:
@@ -54,7 +53,7 @@ MODEL:
   BACKBONE:
     FREEZE: false
     FREEZE_AT: 5
-    NAME: build_resnet_fpn_backbone
+    NAME: build_resnet_sofe_cbam_fpn
   DEVICE: cuda
   FPN:
     FUSE_TYPE: sum
@@ -193,7 +192,7 @@ MODEL:
     - 0.5
     NAME: StandardROIHeads
     NMS_THRESH_TEST: 0.5
-    NUM_CLASSES: 5
+    NUM_CLASSES: 1
     OUTPUT_LAYER: CosineSimOutputLayers
     POSITIVE_FRACTION: 0.25
     PROPOSAL_APPEND_GT: true
@@ -270,9 +269,9 @@ MODEL:
     NAME: SemSegFPNHead
     NORM: GN
     NUM_CLASSES: 54
-  WEIGHTS: checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot_tinyonly_top4classes/model_reset_surgery.pth
+  WEIGHTS: checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot/stickersonly/model_reset_surgery.pth
 MUTE_HEADER: true
-OUTPUT_DIR: results/train_wscs_results
+OUTPUT_DIR: results/sofe-cbam-fpn/ws_then_cs_31shot_stickersonly_sofe_cbam
 SEED: -1
 SOLVER:
   AMP:
