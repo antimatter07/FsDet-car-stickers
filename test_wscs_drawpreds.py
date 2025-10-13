@@ -49,9 +49,10 @@ def load_model(config_path, weights_path):
 
 
 # best ws+stickers config : stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone.yaml
+#TODO: get temporary weights
 ws_model = load_model("configs/stickers-detection/stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone.yaml",
                     "checkpoints/stickers/stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone/model_final.pth")
-cs_model = load_model("configs/stickers-detection/ws_then_cs.yaml", "datasets/testing/model_final.pth") # !! THIS ONE LOL
+cs_model = load_model("configs/stickers-detection/test_predicts/ws_then_cs_testpredicts.yaml", "datasets/testing/model_final.pth") # !! THIS ONE LOL
 
 
 # converts OpenCV image to tensor for GeneralizedRCNN input format
