@@ -30,15 +30,15 @@ INPUT:
 
   
 DATASETS:
-  TRAIN: ('crop_stickers_tinyonly_top4_train', '30_tinyonly_top4')
+  TRAIN: ('crop_stickers_tinyonly_top4_train_2shot', '30_tinyonly_top4')
   TEST: ('crop_stickers_tinyonly_top4_test',)
 
 SOLVER:
   IMS_PER_BATCH: 2
   BASE_LR: 0.001
   STEPS: (216000,)
-  MAX_ITER: 1000 
-  CHECKPOINT_PERIOD: 100
+  MAX_ITER: 2000 
+  CHECKPOINT_PERIOD: 200
   WARMUP_ITERS: 10
 
-OUTPUT_DIR: "results/ws_then_cs_31shot"
+OUTPUT_DIR: "results/ws_then_cs_2shot"

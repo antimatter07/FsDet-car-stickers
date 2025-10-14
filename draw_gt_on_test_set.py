@@ -1,13 +1,13 @@
 import os
-import cv2
 import fsdet.data.meta_stickers
 import fsdet.data.builtin
 from detectron2.data import DatasetCatalog, MetadataCatalog
 from detectron2.utils.visualizer import Visualizer
+import cv2
 
 # --- CONFIGURATION ---
-dataset_name = "stickers_ws_31shot_1280_test_tinyonly_top4"
-output_folder = "gt_images_with_annotations/31shot_stickers_ws"
+dataset_name = "crop_stickers_tinyonly_top4_test"
+output_folder = "gt_images_with_annotations/31shot_crop_ws_stickers"
 os.makedirs(output_folder, exist_ok=True)
 
 dataset_dicts = DatasetCatalog.get(dataset_name)

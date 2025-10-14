@@ -2,7 +2,7 @@ _BASE_: "../Base-RCNN-FPN.yaml"
 MODEL:
 # checkpoints/stickers/stickers_31shot_tinyonly_top4_8_random_all_5000iters_lr001_unfreeze/checkpoint
 # weights for tiny only top 4 + stickers: checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot_tinyonly_top4classes/model_reset_surgery.pth
-  WEIGHTS: "checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot/stickersonly/model_reset_surgery.pth"
+  WEIGHTS: "checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot_tinyonly_top4classes/model_reset_surgery.pth"
   ANCHOR_GENERATOR:
     SIZES: [[8], [8], [16], [16], [24]]
     ASPECT_RATIOS: [[0.5, 1.0, 2.0]]
@@ -10,7 +10,7 @@ MODEL:
   RESNETS:
     DEPTH: 101
   ROI_HEADS:
-    NUM_CLASSES: 1
+    NUM_CLASSES: 5
     BATCH_SIZE_PER_IMAGE: 64
     OUTPUT_LAYER: "CosineSimOutputLayers"
   ROI_BOX_HEAD:
@@ -30,16 +30,15 @@ INPUT:
 
   
 DATASETS:
-  # TRAIN: ('crop_stickers_tinyonly_top4_train', '30_tinyonly_top4') < original 31 shot
-  TRAIN: ('crop_stickers_only_train',)
-  TEST: ('crop_stickers_only_test',)
+  TRAIN: ('crop_stickers_tinyonly_top4_train_5shot', '30_tinyonly_top4')
+  TEST: ('crop_stickers_tinyonly_top4_test',)
 
 SOLVER:
   IMS_PER_BATCH: 2
   BASE_LR: 0.001
   STEPS: (216000,)
   MAX_ITER: 2000 
-  CHECKPOINT_PERIOD: 100
+  CHECKPOINT_PERIOD: 200
   WARMUP_ITERS: 10
-# checkpoints/stickers/stickers_31shot_tinyonly_top4_8_random_all_5000iters_lr001_unfreeze/checkpoint
-OUTPUT_DIR: "results/ws_then_cs_31shot_stickersonly"
+
+OUTPUT_DIR: "results/ws_then_cs_5shot"
