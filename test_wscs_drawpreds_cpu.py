@@ -29,14 +29,14 @@ dataset_name = "stickers_ws_31shot_1280_test_tinyonly_top4" # registered name of
 
 #confidence score threshold for each classs
 WS_SCORE_THRESHOLD = 0.7
-STICKERS_SCORE_THRESHOLD = 0.0
+STICKERS_SCORE_THRESHOLD = 0.15
 
 os.makedirs(output_folder, exist_ok=True)
 torch.cuda.empty_cache()
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"  # SET GPU HERE
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print("CURRENT DEVICE: ", device)
+os.environ["CUDA_VISIBLE_DEVICES"] = ""  # hide all GPUs from PyTorch
+device = torch.device("cpu")
+print("Running on CPU")
 
 # Load FsDet model
 def load_model(config_path, weights_path):
@@ -45,6 +45,8 @@ def load_model(config_path, weights_path):
     cfg = get_cfg()
     cfg.merge_from_file(config_path)
     cfg.MODEL.WEIGHTS = weights_path
+
+    cfg.MODEL.DEVICE = "cpu"
 
     model = GeneralizedRCNN(cfg)
     DetectionCheckpointer(model).load(cfg.MODEL.WEIGHTS)
