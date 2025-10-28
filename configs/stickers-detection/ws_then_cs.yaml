@@ -34,7 +34,6 @@ DATASETS:
   TEST: ('crop_stickers_tinyonly_top4_test',)
 
 SOLVER:
-  # OPTIMIZER: "AdamW"
   IMS_PER_BATCH: 2
   BASE_LR: 0.001
   STEPS: (216000,)
