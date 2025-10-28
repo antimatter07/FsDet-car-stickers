@@ -15,6 +15,7 @@ from detectron2.modeling.postprocessing import detector_postprocess
 from detectron2.data import MetadataCatalog, DatasetCatalog
 from detectron2.structures import Boxes, Instances
 import shutil
+from detectron2.layers import batched_nms
 
 from detectron2.utils.visualizer import Visualizer
 import detectron2.data.transforms as T
@@ -24,7 +25,7 @@ import fsdet.data.builtin # registers all datasets
 
 # Test the FULL IMAGES
 input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder
-output_folder = "results/test_wscs_10shot_images_with_predictions/" # output to save processed images
+output_folder = "results/test_wscs_31shot_images_with_predictions_nms/" # output to save processed images
 dataset_name = "stickers_ws_31shot_1280_test_tinyonly_top4" # registered name of the test dataset
 
 #confidence score threshold for each classs
@@ -64,8 +65,8 @@ ws_model, ws_cfg = load_model(
 )
 
 cs_model, cs_cfg = load_model(
-    "configs/stickers-detection/ws_then_cs_10shot.yaml",
-    "results/ws_then_cs_10shot/model_0001799.pth"
+    "configs/stickers-detection/ws_then_cs_31shot.yaml",
+    "results/ws_then_cs_31shot/model_0000299.pth"
 )
 
 
@@ -183,9 +184,19 @@ def detect_ws_then_cs(image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, metadata, d
             )
             cs_instances_all.append(shifted_instances)
 
-    # --- STEP 4: Combine all sticker detections ---
+    # --- Combine all sticker detections 
     if len(cs_instances_all) > 0:
         cs_instances = Instances.cat(cs_instances_all)
+
+        # Apply per-class NMS to remove overlaps 
+        boxes = cs_instances.pred_boxes.tensor
+        scores = cs_instances.scores
+        classes = cs_instances.pred_classes
+
+        # Perform NMS (IoU threshold = 0.5, adjust if needed)
+        keep = batched_nms(boxes, scores, classes, iou_threshold=0.5)
+        cs_instances = cs_instances[keep]
+
     else:
         # Create empty instances with all fields defined
         height, width = image_bgr.shape[:2]

@@ -11,9 +11,9 @@ DATASETS:
   PROPOSAL_FILES_TEST: []
   PROPOSAL_FILES_TRAIN: []
   TEST:
-  - crop_stickers_tinyonly_top4_test
+  - stickers_10shot_1280_test_tinyonly_top4
   TRAIN:
-  - crop_stickers_tinyonly_top4_train
+  - tinyonly_top4_stickers_10shot_1280
   - 30_tinyonly_top4
 GLOBAL:
   HACK: 1.0
@@ -26,10 +26,15 @@ INPUT:
     TYPE: relative_range
   FORMAT: BGR
   MASK_FORMAT: polygon
-  MAX_SIZE_TEST: 1200
-  MAX_SIZE_TRAIN: 1200
+  MAX_SIZE_TEST: 1333
+  MAX_SIZE_TRAIN: 1333
   MIN_SIZE_TEST: 800
   MIN_SIZE_TRAIN:
+  - 640
+  - 672
+  - 704
+  - 736
+  - 768
   - 800
   MIN_SIZE_TRAIN_SAMPLING: choice
   RANDOM_FLIP: horizontal
@@ -172,7 +177,7 @@ MODEL:
     NORM: ''
     NUM_CONV: 0
     NUM_FC: 2
-    POOLER_RESOLUTION: 14
+    POOLER_RESOLUTION: 7
     POOLER_SAMPLING_RATIO: 0
     POOLER_TYPE: ROIAlignV2
     SMOOTH_L1_BETA: 0.0
@@ -192,7 +197,7 @@ MODEL:
     IOU_THRESHOLDS:
     - 0.5
     NAME: StandardROIHeads
-    NMS_THRESH_TEST: 0.5
+    NMS_THRESH_TEST: 0.4
     NUM_CLASSES: 5
     OUTPUT_LAYER: CosineSimOutputLayers
     POSITIVE_FRACTION: 0.25
@@ -253,7 +258,7 @@ MODEL:
     NMS_THRESH: 0.7
     POSITIVE_FRACTION: 0.5
     POST_NMS_TOPK_TEST: 1000
-    POST_NMS_TOPK_TRAIN: 1000
+    POST_NMS_TOPK_TRAIN: 2000
     PRE_NMS_TOPK_TEST: 1000
     PRE_NMS_TOPK_TRAIN: 2000
     SMOOTH_L1_BETA: 0.0
@@ -272,14 +277,14 @@ MODEL:
     NUM_CLASSES: 54
   WEIGHTS: checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot_tinyonly_top4classes/model_reset_surgery.pth
 MUTE_HEADER: true
-OUTPUT_DIR: results/train_wscs_results
+OUTPUT_DIR: results/stickers_only/10shot_bs2
 SEED: -1
 SOLVER:
   AMP:
     ENABLED: false
   BASE_LR: 0.001
   BIAS_LR_FACTOR: 1.0
-  CHECKPOINT_PERIOD: 100
+  CHECKPOINT_PERIOD: 200
   CLIP_GRADIENTS:
     CLIP_TYPE: value
     CLIP_VALUE: 1.0
@@ -288,12 +293,12 @@ SOLVER:
   GAMMA: 0.1
   IMS_PER_BATCH: 2
   LR_SCHEDULER_NAME: WarmupMultiStepLR
-  MAX_ITER: 2000
+  MAX_ITER: 5000
   MOMENTUM: 0.9
   NESTEROV: false
   REFERENCE_WORLD_SIZE: 0
   STEPS:
-  - 216000
+  - 1800
   WARMUP_FACTOR: 0.001
   WARMUP_ITERS: 10
   WARMUP_METHOD: linear

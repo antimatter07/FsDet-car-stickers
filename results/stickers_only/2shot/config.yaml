@@ -11,9 +11,9 @@ DATASETS:
   PROPOSAL_FILES_TEST: []
   PROPOSAL_FILES_TRAIN: []
   TEST:
-  - crop_stickers_tinyonly_top4_test
+  - stickers_2shot_1280_test_tinyonly_top4
   TRAIN:
-  - crop_stickers_tinyonly_top4_train
+  - tinyonly_top4_stickers_2shot_1280
   - 30_tinyonly_top4
 GLOBAL:
   HACK: 1.0
@@ -26,10 +26,15 @@ INPUT:
     TYPE: relative_range
   FORMAT: BGR
   MASK_FORMAT: polygon
-  MAX_SIZE_TEST: 1200
-  MAX_SIZE_TRAIN: 1200
+  MAX_SIZE_TEST: 1333
+  MAX_SIZE_TRAIN: 1333
   MIN_SIZE_TEST: 800
   MIN_SIZE_TRAIN:
+  - 640
+  - 672
+  - 704
+  - 736
+  - 768
   - 800
   MIN_SIZE_TRAIN_SAMPLING: choice
   RANDOM_FLIP: horizontal
@@ -172,13 +177,13 @@ MODEL:
     NORM: ''
     NUM_CONV: 0
     NUM_FC: 2
-    POOLER_RESOLUTION: 14
+    POOLER_RESOLUTION: 7
     POOLER_SAMPLING_RATIO: 0
     POOLER_TYPE: ROIAlignV2
     SMOOTH_L1_BETA: 0.0
     TRAIN_ON_PRED_BOXES: false
   ROI_HEADS:
-    BATCH_SIZE_PER_IMAGE: 64
+    BATCH_SIZE_PER_IMAGE: 256
     COSINE_SCALE: 20.0
     FREEZE_FEAT: false
     IN_FEATURES:
@@ -192,7 +197,7 @@ MODEL:
     IOU_THRESHOLDS:
     - 0.5
     NAME: StandardROIHeads
-    NMS_THRESH_TEST: 0.5
+    NMS_THRESH_TEST: 0.4
     NUM_CLASSES: 5
     OUTPUT_LAYER: CosineSimOutputLayers
     POSITIVE_FRACTION: 0.25
@@ -253,7 +258,7 @@ MODEL:
     NMS_THRESH: 0.7
     POSITIVE_FRACTION: 0.5
     POST_NMS_TOPK_TEST: 1000
-    POST_NMS_TOPK_TRAIN: 1000
+    POST_NMS_TOPK_TRAIN: 2000
     PRE_NMS_TOPK_TEST: 1000
     PRE_NMS_TOPK_TRAIN: 2000
     SMOOTH_L1_BETA: 0.0
@@ -272,21 +277,21 @@ MODEL:
     NUM_CLASSES: 54
   WEIGHTS: checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot_tinyonly_top4classes/model_reset_surgery.pth
 MUTE_HEADER: true
-OUTPUT_DIR: results/train_wscs_results
+OUTPUT_DIR: results/stickers_only/2shot
 SEED: -1
 SOLVER:
   AMP:
     ENABLED: false
   BASE_LR: 0.001
   BIAS_LR_FACTOR: 1.0
-  CHECKPOINT_PERIOD: 100
+  CHECKPOINT_PERIOD: 200
   CLIP_GRADIENTS:
     CLIP_TYPE: value
     CLIP_VALUE: 1.0
     ENABLED: false
     NORM_TYPE: 2.0
   GAMMA: 0.1
-  IMS_PER_BATCH: 2
+  IMS_PER_BATCH: 8
   LR_SCHEDULER_NAME: WarmupMultiStepLR
   MAX_ITER: 2000
   MOMENTUM: 0.9

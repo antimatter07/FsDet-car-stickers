@@ -6,8 +6,8 @@ from detectron2.utils.visualizer import Visualizer
 import cv2
 
 # --- CONFIGURATION ---
-dataset_name = "crop_stickers_tinyonly_top4_test"
-output_folder = "gt_images_with_annotations/31shot_crop_ws_stickers"
+dataset_name = "crop_stickers_tinyonly_top4_train_10shot"
+output_folder = "gt_images_with_annotations/10shot_trainset_imageswithannots"
 os.makedirs(output_folder, exist_ok=True)
 
 dataset_dicts = DatasetCatalog.get(dataset_name)

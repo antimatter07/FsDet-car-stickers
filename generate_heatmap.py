@@ -24,7 +24,7 @@ import fsdet.data.builtin # registers all datasets
 
 # Test the FULL IMAGES
 input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder
-output_folder = "results/test_wscs_10shot_images_with_predictions/" # output to save processed images
+output_folder = "results/test_wscs_31shot_images_with_predictions_heatmap/" # output to save processed images
 dataset_name = "stickers_ws_31shot_1280_test_tinyonly_top4" # registered name of the test dataset
 
 #confidence score threshold for each classs
@@ -64,8 +64,8 @@ ws_model, ws_cfg = load_model(
 )
 
 cs_model, cs_cfg = load_model(
-    "configs/stickers-detection/ws_then_cs_10shot.yaml",
-    "results/ws_then_cs_10shot/model_0001799.pth"
+    "configs/stickers-detection/ws_then_cs_31shot.yaml",
+    "results/ws_then_cs_31shot/model_0000299.pth"
 )
 
 
@@ -269,5 +269,67 @@ for image_filename in image_files:
 
     #ws_instances, cs_instances = detect_ws_then_cs(image_tensor, ws_model, cs_model, MetadataCatalog.get(dataset_name))
 
-    visualize_result(image_path, ws_instances, cs_instances) 
+    visualize_result(image_path, ws_instances, cs_instances)
+
+
+# Initialize heatmaps for both classes
+global_heatmap_ws = np.zeros((1280, 1280), dtype=np.float32)   # adjust if your test images differ
+global_heatmap_cs = np.zeros((1280, 1280), dtype=np.float32)
+
+for image_filename in image_files:
+    image_path = os.path.join(input_folder, image_filename)
+    image_bgr = cv2.imread(image_path)
+    if image_bgr is None:
+        continue
+
+    h, w = image_bgr.shape[:2]
+
+    # Get detections again (or store them during first loop if you prefer)
+    ws_instances, cs_instances = detect_ws_then_cs(
+        image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, MetadataCatalog.get(dataset_name), device=device
+    )
+
+    # Accumulate windshields
+    for box, score in zip(ws_instances.pred_boxes.tensor, ws_instances.scores):
+        x1, y1, x2, y2 = map(int, box.tolist())
+        x1, y1 = max(0, x1), max(0, y1)
+        x2, y2 = min(w, x2), min(h, y2)
+        global_heatmap_ws[y1:y2, x1:x2] += float(score)
+
+    # Accumulate stickers
+    for box, score in zip(cs_instances.pred_boxes.tensor, cs_instances.scores):
+        x1, y1, x2, y2 = map(int, box.tolist())
+        x1, y1 = max(0, x1), max(0, y1)
+        x2, y2 = min(w, x2), min(h, y2)
+        global_heatmap_cs[y1:y2, x1:x2] += float(score)
+
+# --- Apply Gaussian smoothing ---
+def smooth_and_save_heatmap(heatmap, output_name, base_image_path=None, sigma=25):
+    heatmap = cv2.GaussianBlur(heatmap, (0, 0), sigma)
+    if heatmap.max() > 0:
+        heatmap /= heatmap.max()
+    heatmap_color = cv2.applyColorMap((heatmap * 255).astype(np.uint8), cv2.COLORMAP_JET)
+
+    # Optionally overlay on an image
+    if base_image_path and os.path.exists(base_image_path):
+        base = cv2.imread(base_image_path)
+        base = cv2.resize(base, (heatmap.shape[1], heatmap.shape[0]))
+        blended = cv2.addWeighted(base, 0.6, heatmap_color, 0.4, 0)
+    else:
+        blended = heatmap_color
+
+    output_path = os.path.join(output_folder, output_name)
+    cv2.imwrite(output_path, blended)
+    print(f"✅ Saved global heatmap: {output_path}")
+
+# Use one representative image for overlay
+sample_image = os.path.join(input_folder, image_files[0]) if image_files else None
+
+# Save each heatmap
+smooth_and_save_heatmap(global_heatmap_ws, "global_heatmap_windshield.jpg", sample_image)
+smooth_and_save_heatmap(global_heatmap_cs, "global_heatmap_sticker.jpg", sample_image)
+
+# Optional: combined heatmap (add both together)
+global_heatmap_combined = global_heatmap_ws + global_heatmap_cs
+smooth_and_save_heatmap(global_heatmap_combined, "global_heatmap_combined.jpg", sample_image)
 

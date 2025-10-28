@@ -4,7 +4,7 @@ MODEL:
 # weights for tiny only top 4 + stickers: checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot_tinyonly_top4classes/model_reset_surgery.pth
   WEIGHTS: "checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot_tinyonly_top4classes/model_reset_surgery.pth"
   ANCHOR_GENERATOR:
-    SIZES: [[8], [8], [16], [16], [24]]
+    # SIZES: [[8], [8], [16], [16], [24]]
     ASPECT_RATIOS: [[0.5, 1.0, 2.0]]
   MASK_ON: False
   RESNETS:
@@ -34,10 +34,11 @@ DATASETS:
   TEST: ('crop_stickers_tinyonly_top4_test',)
 
 SOLVER:
+  # OPTIMIZER: "AdamW"
   IMS_PER_BATCH: 2
   BASE_LR: 0.001
   STEPS: (216000,)
-  MAX_ITER: 1000 
+  MAX_ITER: 2000 
   CHECKPOINT_PERIOD: 100
   WARMUP_ITERS: 10
 # checkpoints/stickers/stickers_31shot_tinyonly_top4_8_random_all_5000iters_lr001_unfreeze/checkpoint

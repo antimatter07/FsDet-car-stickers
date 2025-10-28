@@ -11,9 +11,9 @@ DATASETS:
   PROPOSAL_FILES_TEST: []
   PROPOSAL_FILES_TRAIN: []
   TEST:
-  - crop_stickers_tinyonly_top4_test
+  - stickers_31shot_1280_test_tinyonly_top4
   TRAIN:
-  - crop_stickers_tinyonly_top4_train
+  - tinyonly_top4_stickers_31shot_1280
   - 30_tinyonly_top4
 GLOBAL:
   HACK: 1.0
@@ -46,11 +46,11 @@ MODEL:
     NAME: DefaultAnchorGenerator
     OFFSET: 0.0
     SIZES:
+    - - 8
+    - - 16
     - - 32
     - - 64
     - - 128
-    - - 256
-    - - 512
   BACKBONE:
     FREEZE: false
     FREEZE_AT: 5
@@ -178,7 +178,7 @@ MODEL:
     SMOOTH_L1_BETA: 0.0
     TRAIN_ON_PRED_BOXES: false
   ROI_HEADS:
-    BATCH_SIZE_PER_IMAGE: 64
+    BATCH_SIZE_PER_IMAGE: 256
     COSINE_SCALE: 20.0
     FREEZE_FEAT: false
     IN_FEATURES:
@@ -253,7 +253,7 @@ MODEL:
     NMS_THRESH: 0.7
     POSITIVE_FRACTION: 0.5
     POST_NMS_TOPK_TEST: 1000
-    POST_NMS_TOPK_TRAIN: 1000
+    POST_NMS_TOPK_TRAIN: 2000
     PRE_NMS_TOPK_TEST: 1000
     PRE_NMS_TOPK_TRAIN: 2000
     SMOOTH_L1_BETA: 0.0
@@ -272,12 +272,12 @@ MODEL:
     NUM_CLASSES: 54
   WEIGHTS: checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot_tinyonly_top4classes/model_reset_surgery.pth
 MUTE_HEADER: true
-OUTPUT_DIR: results/train_wscs_results
+OUTPUT_DIR: results/stickers_only/31shot
 SEED: -1
 SOLVER:
   AMP:
     ENABLED: false
-  BASE_LR: 0.001
+  BASE_LR: 0.01
   BIAS_LR_FACTOR: 1.0
   CHECKPOINT_PERIOD: 100
   CLIP_GRADIENTS:
@@ -286,16 +286,16 @@ SOLVER:
     ENABLED: false
     NORM_TYPE: 2.0
   GAMMA: 0.1
-  IMS_PER_BATCH: 2
+  IMS_PER_BATCH: 8
   LR_SCHEDULER_NAME: WarmupMultiStepLR
   MAX_ITER: 2000
   MOMENTUM: 0.9
   NESTEROV: false
   REFERENCE_WORLD_SIZE: 0
   STEPS:
-  - 216000
+  - 10000
   WARMUP_FACTOR: 0.001
-  WARMUP_ITERS: 10
+  WARMUP_ITERS: 200
   WARMUP_METHOD: linear
   WEIGHT_DECAY: 0.0001
   WEIGHT_DECAY_BIAS: 0.0001
