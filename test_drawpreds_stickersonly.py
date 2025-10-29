@@ -1,15 +1,14 @@
 """
-test_wscs_drawpreds.py
+test_drawpreds_stickersonly.py
 
 Implementation of the full windshield-guided detection pipeline.
 
-This script implements the windshield-guided detection pipeline. Given a test dataset and path to weights of 
-both the windshield model and sticker model, the script goes through each image and performs inference using
-the proposed detection pipeline. 
+This script implements performs inference with a sticker detector trained on sticker annotations on the full-image and
+draws predictions made by the model with Detectron2's visualizer in the output folder.
+
 """
 
-# --- ACRONYMS ---
-# ws = windshield
+
 # cs = car stickers
 import json
 import os
@@ -50,28 +49,6 @@ print("CURRENT DEVICE: ", device)
 
 # Load FsDet model
 def load_model(config_path, weights_path):
-    """
-    Loads a Detectron2 model and its configuration for performing inference.
-
-    This function reads a YAML configuration file and initializes a Detectron2
-    GeneralizedRCNN model using the specified weights. It also prepares the
-    `cfg` configuration object that defines model and preprocessing parameters.
-
-    Args:
-        config_path (str): Path to the YAML file containing the model configuration.
-        weights_path (str): Path to the model weights (.pth) file.
-
-    Returns:
-        tuple:
-            model (torch.nn.Module): The loaded Detectron2 model, set to evaluation mode.
-            cfg (CfgNode): The Detectron2 configuration object associated with the model.
-
-    Raises:
-        FileNotFoundError: If the specified configuration or weight file does not exist.
-        RuntimeError: If model loading or checkpoint restoration fails.
-    """
-    
-    
     torch.cuda.empty_cache()
 
     cfg = get_cfg()
@@ -90,10 +67,6 @@ def load_model(config_path, weights_path):
 # Weights for best 2shot: results/ws_then_cs_2shot/model_0001799.pth
 # Weights for best 5shot: results/ws_then_cs_5shot/model_0001399.pth
 # weights for best 10shot: results/ws_then_cs_10shot/model_0001799.pth
-ws_model, ws_cfg = load_model(
-    "configs/stickers-detection/stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone.yaml",
-    "checkpoints/stickers/stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone/model_final.pth"
-)
 
 cs_model, cs_cfg = load_model(
     "configs/stickers-detection/ws_then_cs_10shot.yaml",
@@ -161,6 +134,24 @@ def prepare_input_for_model(image_bgr, cfg, device):
 
     # Return input dict (model handles normalization internally)
     return {"image": image_tensor.to(device), "height": height, "width": width}
+
+
+
+@torch.no_grad()
+def detect_cs(image_bgr, cs_model, cs_cfg, metadata, device="cuda"):
+
+     # Required pre-processing for image
+    cs_inputs = prepare_input_for_model(image_bgr, cs_cfg, device)
+    cs_outputs = cs_model([cs_inputs])[0]
+
+    cs_instances = detector_postprocess(
+            cs_outputs["instances"].to("cpu"), cs_inputs["height"], cs_inputs["width"]
+    )
+
+    keep = (cs_instances.pred_classes == 4) & (cs_instances.scores >= STICKERS_SCORE_THRESHOLD)
+    cs_instances = cs_instances[keep]
+    
+    
     
 @torch.no_grad()
 def detect_ws_then_cs(image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, metadata, device="cuda"):

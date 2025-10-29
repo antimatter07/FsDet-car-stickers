@@ -15,18 +15,17 @@ from detectron2.modeling.postprocessing import detector_postprocess
 from detectron2.data import MetadataCatalog, DatasetCatalog
 from detectron2.structures import Boxes, Instances
 import shutil
-from detectron2.layers import batched_nms
 
 from detectron2.utils.visualizer import Visualizer
 import detectron2.data.transforms as T
 
 import fsdet.data.builtin # registers all datasets
 
-
 # Test the FULL IMAGES
 input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder
-output_folder = "results/test_wscs_31shot_images_with_predictions_nms/" # output to save processed images
+output_folder = "results/test_evaluation/" # output to save processed images
 dataset_name = "stickers_ws_31shot_1280_test_tinyonly_top4" # registered name of the test dataset
+
 
 #confidence score threshold for each classs
 WS_SCORE_THRESHOLD = 0.7
@@ -68,25 +67,6 @@ cs_model, cs_cfg = load_model(
     "configs/stickers-detection/ws_then_cs_31shot.yaml",
     "results/ws_then_cs_31shot/model_0000299.pth"
 )
-
-
-# converts OpenCV image to tensor for GeneralizedRCNN input format
-def preprocess_image(image_path):
-    image_bgr = cv2.imread(image_path)
-    
-    if image_bgr is None:
-        raise FileNotFoundError(f"Image not found: {image_path}")
-
-    image = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-    image_tensor = torch.from_numpy(image.astype("float32")).permute(2, 0, 1).to(device)
-
-    input = {
-        "image": image_tensor,
-        "height": image_tensor.shape[1],
-        "width": image_tensor.shape[2],
-    }
-
-    return input
 
 
 # Filter predictions to only include desired class
@@ -184,19 +164,9 @@ def detect_ws_then_cs(image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, metadata, d
             )
             cs_instances_all.append(shifted_instances)
 
-    # --- Combine all sticker detections 
+    # --- STEP 4: Combine all sticker detections ---
     if len(cs_instances_all) > 0:
         cs_instances = Instances.cat(cs_instances_all)
-
-        # Apply per-class NMS to remove overlaps 
-        boxes = cs_instances.pred_boxes.tensor
-        scores = cs_instances.scores
-        classes = cs_instances.pred_classes
-
-        # Perform NMS (IoU threshold = 0.5, adjust if needed)
-        keep = batched_nms(boxes, scores, classes, iou_threshold=0.5)
-        cs_instances = cs_instances[keep]
-
     else:
         # Create empty instances with all fields defined
         height, width = image_bgr.shape[:2]
@@ -260,25 +230,46 @@ def clear_output_folder():
                 print(f"Failed to delete {file_path}. Reason: {e}")
     else:
         os.makedirs(output_folder)
-
+    
 
 clear_output_folder()
+
 
 # Get all image files from the folder
 image_files = [f for f in os.listdir(input_folder) if f.lower().endswith((".jpg", ".jpeg"))]
 print("> Image file count: ", len(image_files))
 print("> Dataset name: ", dataset_name)
 
+predictions = []
+
 for image_filename in image_files:
     image_path = os.path.join(input_folder, image_filename)
-    #image_tensor = preprocess_image(image_path)
     image_bgr = cv2.imread(image_path)
+    
     ws_instances, cs_instances = detect_ws_then_cs(
     image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, MetadataCatalog.get(dataset_name), device=device
     )
 
+    if len(cs_instances) > 0:
+        boxes = cs_instances.pred_boxes.tensor.cpu().numpy()
+        scores = cs_instances.scores.cpu().numpy()
+        labels = cs_instances.pred_classes.cpu().numpy()
+        
+        for box, score, label in zip(boxes, scores, labels):
+            x1, y1, x2, y2 = box.tolist()
+            width, height = x2 - x1, y2 - y1
+            category_id = int(label)
 
-    #ws_instances, cs_instances = detect_ws_then_cs(image_tensor, ws_model, cs_model, MetadataCatalog.get(dataset_name))
+            predictions.append({
+                "file_name": image_filename,
+                "category_id": category_id,
+                "bbox": [x1, y1, width, height],
+                "score": float(score)
+            })
+    # visualize_result(image_path, ws_instances, cs_instances)
 
-    visualize_result(image_path, ws_instances, cs_instances) 
+predictions_json_path = output_folder + "test_predictions.json"
+with open(predictions_json_path, "w") as f:
+    json.dump(predictions, f, indent=2)
 
+print(f"Saved predictions to {predictions_json_path}")
