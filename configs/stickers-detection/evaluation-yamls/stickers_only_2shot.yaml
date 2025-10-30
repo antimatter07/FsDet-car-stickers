@@ -1,8 +1,8 @@
 _BASE_: "../Base-RCNN-FPN.yaml"
 MODEL:
 # checkpoints/stickers/stickers_31shot_tinyonly_top4_8_random_all_5000iters_lr001_unfreeze/checkpoint
-#
-  WEIGHTS: "checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot_tinyonly_top4classes/model_reset_surgery.pth"
+# fsdet/FsDet-car-stickers/results/stickers_only/2shot/best/model_0001799.pth
+  WEIGHTS: "results/stickers_only/2shot/best/model_0001799.pth"
   MASK_ON: False
   RESNETS:
     DEPTH: 101
@@ -11,7 +11,6 @@ MODEL:
     BATCH_SIZE_PER_IMAGE: 64
     OUTPUT_LAYER: "CosineSimOutputLayers"
     NMS_THRESH_TEST: 0.4
-    SCORE_THRESH_TEST: 0.05
   ROI_BOX_HEAD:
     POOLER_RESOLUTION: 7
   RPN:
@@ -29,15 +28,14 @@ INPUT:
 
 DATASETS:
   #TRAIN: ('30_tinyonly',)
-  TRAIN: ('tinyonly_top4_stickers_31shot_1280', '30_tinyonly_top4')
-  TEST: ('stickers_31shot_1280_test_tinyonly_top4',)
+  TRAIN: ('tinyonly_top4_stickers_2shot_1280', '30_tinyonly_top4')
+  TEST: ('stickers_2shot_1280_test_tinyonly_top4',)
 SOLVER:
   IMS_PER_BATCH: 2
   BASE_LR: 0.001
-  STEPS: (2600,)
-  MAX_ITER: 7000
+  STEPS: (1800,)
+  MAX_ITER: 5000
   CHECKPOINT_PERIOD: 200
   WARMUP_ITERS: 10
 # checkpoints/stickers/stickers_31shot_tinyonly_top4_8_random_all_5000iters_lr001_unfreeze/checkpoint
-# results/stickers_only/31shot/best/model_0000999.pth
-OUTPUT_DIR: "results/stickers_only/31shot/best/model_0000999.pth"
+OUTPUT_DIR: "results/stickers_only/2shot/eval"

@@ -55,7 +55,7 @@ def load_model(config_path, weights_path):
 
     This function reads a YAML configuration file and initializes a Detectron2
     GeneralizedRCNN model using the specified weights. It also prepares the
-    `cfg` configuration object that defines model and preprocessing parameters.
+    cfg configuration object that defines model and preprocessing parameters.
 
     Args:
         config_path (str): Path to the YAML file containing the model configuration.

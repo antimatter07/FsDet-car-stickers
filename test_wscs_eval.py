@@ -1,80 +1,137 @@
 import json
 import torch
+import numpy as np
 from collections import defaultdict
+from pycocotools.coco import COCO
+from pycocotools.cocoeval import COCOeval
 
-pred_annot = "results/"
-gt_annot = "datasets/stickers/annotations/stickers_ws_31shot_test_1280.json" # includes GT boxes and view angle of the image
+pred_json= "results/test_evaluation/test_predictions.json"
+gt_json = "datasets/stickers/annotations/stickers_ws_31shot_test_1280.json" # includes view angle of the image
 
-# Load dataset & create lookup tables for comparison of predictions and GT values
-def load_dataset(dataset_annot_path):
-    with open(dataset_annot_path, "r") as f:
-        dataset_annot = json.load(f)
+
+def compute_iou(box1, box2):
+    x1, y1, w1, h1 = box1
+    x2, y2, w2, h2 = box2
+
+    # compute intersection
+    xa = max(x1, x2)
+    ya = max(y1, y2)
+    xb = min(x1 + w1, x2 + w2)
+    yb = min(y1 + h1, y2 + h2)
     
-    id_info_lookup = {image["id"]: image for image in dataset_annot["images"]}
-    name_id_lookup = {image["file_name"]: image["id"] for image in dataset_annot["images"]}
-    
-    image_gt_dict = defaultdict(list)
-    for annot in dataset_annot["annotations"]:
-        x1, y1, w, h = annot["bbox"]
-        x2, y2 = x1 + w, y1 + h
-        image_gt_dict[annot["image_id"]].append([x1, y1, x2, y2])
+    inter = max(0, xb - xa) * max(0, yb - ya)
+    union = (w1 * h1) + (w2 * h2) - inter
 
-    return id_info_lookup, name_id_lookup, image_gt_dict
-
-
-# IoU computation
-def compute_iou(boxA, boxB):
-    xA = max(boxA[0], boxB[0])
-    yA = max(boxA[1], boxB[1])
-    xB = min(boxA[2], boxB[2])
-    yB = min(boxA[3], boxB[3])
-
-    interArea = max(0, xB - xA) * max(0, yB - yA)
-    if interArea == 0:
+    if union == 0:
         return 0.0
+    
+    return inter / union
+    
+# create a lookup of ground truths per image
+def load_gt_by_image(category_id=91): #car sticker
+    with open(gt_json) as f:
+        gt = json.load(f)
 
-    boxAArea = (boxA[2] - boxA[0]) * (boxA[3] - boxA[1])
-    boxBArea = (boxB[2] - boxB[0]) * (boxB[3] - boxB[1])
-    return interArea / float(boxAArea + boxBArea - interArea)
+    image_gt = defaultdict(list)
+
+    for ann in gt["annotations"]:
+        if ann["category_id"] == category_id:
+            image_gt[ann["image_id"]].append(ann["bbox"])
+
+    return dict(image_gt)
 
 
+# create a lookup of predictions per image
+def load_pred_by_image(category_id=4): #car sticker
+    with open(pred_json) as f:
+        predictions = json.load(f)
 
-# Main evaluator
-# Evaluates the accuracy of image
-def evaluate_image(image_filename, cs_instances, id_info_lookup, name_id_lookup, image_gt_dict):
-    image_id = name_id_lookup.get(image_filename)
-    if image_id is None:
-        print(f"Error: {image_filename} not found in dataset annotation.")
-        return None
+    with open(gt_json) as f:
+        gt = json.load(f)
 
-    img_info = id_info_lookup[image_id]
-    extra = img_info.get("extra", {})
-    tags = extra.get("tags", [])
-    view_angle = tags[0] if tags else "unknown"
-
-    gt_boxes = image_gt_dict[image_id]
-
-    pred_boxes = cs_instances.pred_boxes.tensor.cpu().numpy().tolist()
-
-    ious = []
-    for gt in gt_boxes:
-        best_iou = 0
-        for pred in pred_boxes:
-            iou = compute_iou(gt, pred)
-            best_iou = max(best_iou, iou)
-        ious.append(best_iou)
-
-    avg_iou = sum(ious) / len(ious) if ious else 0.0
-    acc = (sum(i >= 0.5 for i in ious) / len(ious) * 100) if ious else 0.0
-
-    print(f"\nImage: {image_filename}")
-    print(f"View angle: {view_angle}")
-    print(f"Average IoU: {avg_iou:.3f}")
-    print(f"Detection accuracy (IoU@0.5): {acc:.2f}%")
-
-    return {
-        "image": image_filename,
-        "view_angle": view_angle,
-        "avg_iou": avg_iou,
-        "accuracy": acc,
+    image_id_lookup = { 
+        image["file_name"] : image["id"] for image in gt["images"]
     }
+
+    image_pred = defaultdict(list)
+    
+    for p in predictions:
+        if p["category_id"] == category_id:
+            image_id = image_id_lookup[p["file_name"]]
+            image_pred[image_id].append((p["bbox"], p["score"]))
+
+    # sort by confidence desc
+    for preds in image_pred.values():
+        preds.sort(key=lambda x: x[1], reverse=True)
+
+    return dict(image_pred)
+
+
+# compare gt and prediction boxes in an image (greedy method)
+def compare_boxes(gt_boxes, pred_boxes, iou_thresh=0.5):
+    matched_gt = set()
+    tp = 0
+    fp = 0
+
+    for p_box, _ in pred_boxes:
+        best_iou = 0
+        best_gi = -1
+        
+        # find the best gt box match for this prediction
+        for gi, g_box in enumerate(gt_boxes):
+            if gi in matched_gt:
+                continue
+        
+            iou = compute_iou(p_box, g_box)
+            if iou > best_iou:
+                best_iou = iou
+                best_gi = gi
+        if best_iou >= iou_thresh:
+            tp+=1
+            matched_gt.add(best_gi)
+        else:
+            fp+=1         
+
+    fn = len(gt_boxes) - len(matched_gt)
+
+    return tp, fp, fn
+                
+
+# Evaluate all predictions
+def evaluate(iou_thresh=0.5): # TODO: add view variable
+    total_tp = 0
+    total_fp = 0
+    total_fn = 0
+    
+    gt = load_gt_by_image()
+    predictions = load_pred_by_image()
+    
+    total_tp = total_fp = total_fn = 0
+    
+    image_ids = set(gt.keys()) | set(predictions.keys())
+    for image_id in image_ids:
+
+        gt_boxes = gt.get(image_id, [])
+        pred_boxes = predictions.get(image_id, [])
+
+        tp, fp, fn = compare_boxes(gt_boxes, pred_boxes, iou_thresh)
+
+        total_tp += tp
+        total_fp += fp
+        total_fn += fn
+
+    precision = total_tp / (total_tp + total_fp + 1e-6)
+    recall    = total_tp / (total_tp + total_fn + 1e-6)
+
+    print("=== Car Sticker Detection Evaluation ===")
+    print(f"True Positives : {total_tp}")
+    print(f"False Positives: {total_fp}")
+    print(f"False Negatives: {total_fn}")
+    print(f"Precision: {precision:.4f}")
+    print(f"Recall   : {recall:.4f}")
+
+    return total_tp, total_fp, total_fn, precision, recall
+                    
+
+
+evaluate()

@@ -1,7 +1,7 @@
 """
 test_drawpreds_stickersonly.py
 
-Implementation of the full windshield-guided detection pipeline.
+Visualize sticker predictions on test set of each k-shot split for sticker only (no windshield-guided pipeline yet)
 
 This script implements performs inference with a sticker detector trained on sticker annotations on the full-image and
 draws predictions made by the model with Detectron2's visualizer in the output folder.
@@ -32,12 +32,12 @@ import fsdet.data.builtin # registers all datasets
 
 
 # Test the FULL IMAGES
-input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder
-output_folder = "results/test_wscs_10shot_images_with_predictions/" # output to save processed images
-dataset_name = "stickers_ws_31shot_1280_test_tinyonly_top4" # registered name of the test dataset
+#input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder
+output_folder = "results/stickers_only/predictions_visualization/31_shot/" # output to save processed images
+# NEED to set dataset name for retrieving the test set data
+dataset_name = "stickers_31shot_1280_test_tinyonly_top4" # registered name of the test dataset
+input_folder = MetadataCatalog.get(dataset_name).image_root
 
-#confidence score threshold for each classs
-WS_SCORE_THRESHOLD = 0.7
 STICKERS_SCORE_THRESHOLD = 0.0
 
 os.makedirs(output_folder, exist_ok=True)
@@ -49,6 +49,27 @@ print("CURRENT DEVICE: ", device)
 
 # Load FsDet model
 def load_model(config_path, weights_path):
+    """
+    Loads a Detectron2 model and its configuration for performing inference.
+
+    This function reads a YAML configuration file and initializes a Detectron2
+    GeneralizedRCNN model using the specified weights. It also prepares the
+    cfg configuration object that defines model and preprocessing parameters.
+
+    Args:
+        config_path (str): Path to the YAML file containing the model configuration.
+        weights_path (str): Path to the model weights (.pth) file.
+
+    Returns:
+        tuple:
+            model (torch.nn.Module): The loaded Detectron2 model, set to evaluation mode.
+            cfg (CfgNode): The Detectron2 configuration object associated with the model.
+
+    Raises:
+        FileNotFoundError: If the specified configuration or weight file does not exist.
+        RuntimeError: If model loading or checkpoint restoration fails.
+    
+    """
     torch.cuda.empty_cache()
 
     cfg = get_cfg()
@@ -62,48 +83,19 @@ def load_model(config_path, weights_path):
     return model, cfg
 
 
-# best ws+stickers config : stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone.yaml
-# Weights for best 31shot: fsdet/FsDet-car-stickers/results/ws_then_cs_31shot/model_0000299.pth
-# Weights for best 2shot: results/ws_then_cs_2shot/model_0001799.pth
-# Weights for best 5shot: results/ws_then_cs_5shot/model_0001399.pth
-# weights for best 10shot: results/ws_then_cs_10shot/model_0001799.pth
+# For 31-shot
+# fsdet/FsDet-car-stickers/configs/stickers-detection/stickers_only_31shot.yaml
+# fsdet/FsDet-car-stickers/results/stickers_only/31shot/best/model_0000999.pth
 
+# For 10-shot
+
+# For 5-shot
+
+# For 2-shot
 cs_model, cs_cfg = load_model(
-    "configs/stickers-detection/ws_then_cs_10shot.yaml",
-    "results/ws_then_cs_10shot/model_0001799.pth"
+    "configs/stickers-detection/stickers_only_31shot.yaml",
+    "results/stickers_only/31shot/best/model_0000999.pth"
 )
-
-
-# converts OpenCV image to tensor for GeneralizedRCNN input format
-def preprocess_image(image_path):
-    image_bgr = cv2.imread(image_path)
-    
-    if image_bgr is None:
-        raise FileNotFoundError(f"Image not found: {image_path}")
-
-    image = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-    image_tensor = torch.from_numpy(image.astype("float32")).permute(2, 0, 1).to(device)
-
-    input = {
-        "image": image_tensor,
-        "height": image_tensor.shape[1],
-        "width": image_tensor.shape[2],
-    }
-
-    return input
-
-
-# Filter predictions to only include desired class
-def detect_only_class(img, model, class_id, score_threshold):
-    with torch.no_grad():
-        outputs = model([img])
-        instances = outputs[0]["instances"].to(device)
-
-    # only consider those score above the threshold
-    mask = (instances.pred_classes == class_id) & (instances.scores >= score_threshold) 
-    filtered_instances = instances[mask]
-
-    return filtered_instances
 
 
 def create_empty_instances(height, width):
@@ -151,70 +143,15 @@ def detect_cs(image_bgr, cs_model, cs_cfg, metadata, device="cuda"):
     keep = (cs_instances.pred_classes == 4) & (cs_instances.scores >= STICKERS_SCORE_THRESHOLD)
     cs_instances = cs_instances[keep]
     
-    
-    
-@torch.no_grad()
-def detect_ws_then_cs(image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, metadata, device="cuda"):
-    """
-    1. Run windshield model on the full image.
-    2. For each windshield detection, crop that region.
-    3. Run the sticker model on the crop.
-    4. Map sticker detections back to full image coordinates.
-    """
-    # --- STEP 1: Detect windshields on full image ---
-    ws_inputs = prepare_input_for_model(image_bgr, ws_cfg, device)
-    ws_outputs = ws_model([ws_inputs])[0]
-
-    ws_instances = detector_postprocess(
-        ws_outputs["instances"].to("cpu"), ws_inputs["height"], ws_inputs["width"]
-    )
-    # Filter windshields by score threshold
-    keep = (ws_instances.pred_classes == 5) & (ws_instances.scores >= WS_SCORE_THRESHOLD)
-    ws_instances = ws_instances[keep]
-
-    cs_instances_all = []
-
-    # --- STEP 2: For each windshield box, crop and detect stickers ---
-    for i, box in enumerate(ws_instances.pred_boxes):
-        x1, y1, x2, y2 = map(int, box.tolist())
-        crop = image_bgr[y1:y2, x1:x2]
-
-        if crop.size == 0:
-            continue
-
-        cs_inputs = prepare_input_for_model(crop, cs_cfg, device)
-        cs_outputs = cs_model([cs_inputs])[0]
-
-        cs_instances = detector_postprocess(
-            cs_outputs["instances"].to("cpu"), cs_inputs["height"], cs_inputs["width"]
-        )
-
-        keep = (cs_instances.pred_classes == 4) & (cs_instances.scores >= STICKERS_SCORE_THRESHOLD)
-        cs_instances = cs_instances[keep]
-
-        # --- STEP 3: Shift sticker boxes to full image coordinates ---
-        if len(cs_instances) > 0:
-            cs_boxes = cs_instances.pred_boxes.tensor
-            cs_boxes[:, 0::2] += x1  # shift x1, x2
-            cs_boxes[:, 1::2] += y1  # shift y1, y2
-
-            shifted_instances = Instances(
-                image_size=image_bgr.shape[:2],
-                pred_boxes=Boxes(cs_boxes),
-                scores=cs_instances.scores,
-                pred_classes=cs_instances.pred_classes,
-            )
-            cs_instances_all.append(shifted_instances)
-
-    # --- STEP 4: Combine all sticker detections ---
-    if len(cs_instances_all) > 0:
-        cs_instances = Instances.cat(cs_instances_all)
-    else:
+    # Combine all sticker predictions
+    if len(cs_instances) == 0:
         # Create empty instances with all fields defined
         height, width = image_bgr.shape[:2]
         cs_instances = create_empty_instances(height, width)
+    return cs_instances
+        
 
-    return ws_instances, cs_instances
+
 
 def clean_instance_fields(instances):
     """
@@ -233,23 +170,21 @@ def clean_instance_fields(instances):
     return new_instances
     
 
-def visualize_result(image_path, ws_instances, cs_instances):
+def visualize_result(image_path, cs_instances):
     image_bgr = cv2.imread(image_path)
     image = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
     
     metadata = MetadataCatalog.get(dataset_name)
-    metadata.thing_classes = ["class0", "class1", "class2", "class3", "sticker", "windshield"]
+    metadata.thing_classes = ["class0", "class1", "class2", "class3", "sticker"]
 
     # move to CPU for Visualizer
-    ws_instances_cpu = clean_instance_fields(ws_instances.to("cpu"))
     cs_instances_cpu = clean_instance_fields(cs_instances.to("cpu"))
 
-    # combine all instances
-    all_instances_cpu = Instances.cat([ws_instances_cpu, cs_instances_cpu])
+
 
     # visualize resultsfcv2.im
     vis = Visualizer(image.copy(), metadata=metadata, scale=1.0)
-    output = vis.draw_instance_predictions(all_instances_cpu)
+    output = vis.draw_instance_predictions(cs_instances_cpu)
 
     # Save the image in output folder
     output_image = output.get_image()
@@ -283,14 +218,14 @@ print("> Dataset name: ", dataset_name)
 
 for image_filename in image_files:
     image_path = os.path.join(input_folder, image_filename)
-    #image_tensor = preprocess_image(image_path)
+ 
     image_bgr = cv2.imread(image_path)
-    ws_instances, cs_instances = detect_ws_then_cs(
-    image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, MetadataCatalog.get(dataset_name), device=device
+    cs_instances = detect_cs(
+    image_bgr, cs_model, cs_cfg, MetadataCatalog.get(dataset_name), device=device
     )
 
 
     #ws_instances, cs_instances = detect_ws_then_cs(image_tensor, ws_model, cs_model, MetadataCatalog.get(dataset_name))
 
-    visualize_result(image_path, ws_instances, cs_instances) 
+    visualize_result(image_path, cs_instances) 
 
