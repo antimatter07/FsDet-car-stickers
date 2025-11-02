@@ -1,3 +1,13 @@
+"""
+test_wscs_drawpreds.py
+
+Implementation of the full windshield-guided detection pipeline.
+
+This script implements the windshield-guided detection pipeline. Given a test dataset and path to weights of 
+both the windshield model and sticker model, the script goes through each image and performs inference using
+the proposed detection pipeline. 
+"""
+
 # --- ACRONYMS ---
 # ws = windshield
 # cs = car stickers
@@ -14,6 +24,7 @@ from fsdet.data.meta_stickers import register_meta_stickers
 from detectron2.modeling.postprocessing import detector_postprocess
 from detectron2.data import MetadataCatalog, DatasetCatalog
 from detectron2.structures import Boxes, Instances
+from detectron2.structures import pairwise_iou, BoxMode
 import shutil
 
 from detectron2.utils.visualizer import Visualizer
@@ -24,12 +35,12 @@ import fsdet.data.builtin # registers all datasets
 
 # Test the FULL IMAGES
 input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder
-output_folder = "results/test_wscs_31shot_images_with_predictions_heatmap/" # output to save processed images
+output_folder = "results/with_missed_detections/test_wscs_31shot_images_with_predictions/" # output to save processed images
 dataset_name = "stickers_ws_31shot_1280_test_tinyonly_top4" # registered name of the test dataset
 
 #confidence score threshold for each classs
 WS_SCORE_THRESHOLD = 0.7
-STICKERS_SCORE_THRESHOLD = 0.0
+STICKERS_SCORE_THRESHOLD = 0.10
 
 os.makedirs(output_folder, exist_ok=True)
 torch.cuda.empty_cache()
@@ -40,6 +51,28 @@ print("CURRENT DEVICE: ", device)
 
 # Load FsDet model
 def load_model(config_path, weights_path):
+    """
+    Loads a Detectron2 model and its configuration for performing inference.
+
+    This function reads a YAML configuration file and initializes a Detectron2
+    GeneralizedRCNN model using the specified weights. It also prepares the
+    cfg configuration object that defines model and preprocessing parameters.
+
+    Args:
+        config_path (str): Path to the YAML file containing the model configuration.
+        weights_path (str): Path to the model weights (.pth) file.
+
+    Returns:
+        tuple:
+            model (torch.nn.Module): The loaded Detectron2 model, set to evaluation mode.
+            cfg (CfgNode): The Detectron2 configuration object associated with the model.
+
+    Raises:
+        FileNotFoundError: If the specified configuration or weight file does not exist.
+        RuntimeError: If model loading or checkpoint restoration fails.
+    """
+    
+    
     torch.cuda.empty_cache()
 
     cfg = get_cfg()
@@ -54,10 +87,11 @@ def load_model(config_path, weights_path):
 
 
 # best ws+stickers config : stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone.yaml
-# Weights for best 31shot: fsdet/FsDet-car-stickers/results/ws_then_cs_31shot/model_0000299.pth
+# Weights for best 31shot: results/ws_then_cs_31shot/model_0000299.pth
 # Weights for best 2shot: results/ws_then_cs_2shot/model_0001799.pth
 # Weights for best 5shot: results/ws_then_cs_5shot/model_0001399.pth
 # weights for best 10shot: results/ws_then_cs_10shot/model_0001799.pth
+
 ws_model, ws_cfg = load_model(
     "configs/stickers-detection/stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone.yaml",
     "checkpoints/stickers/stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone/model_final.pth"
@@ -210,27 +244,62 @@ def clean_instance_fields(instances):
     return new_instances
     
 
-def visualize_result(image_path, ws_instances, cs_instances):
+def visualize_result(image_path, ws_instances, cs_instances, draw_missed_gts=False, iou_thresh=0.5):
+    """
+    Visualizes predictions, and optionally draws missed GT boxes (in red)
+    if the sticker model failed to detect them above the IoU threshold.
+    """
     image_bgr = cv2.imread(image_path)
     image = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-    
+
     metadata = MetadataCatalog.get(dataset_name)
     metadata.thing_classes = ["class0", "class1", "class2", "class3", "sticker", "windshield"]
 
-    # move to CPU for Visualizer
     ws_instances_cpu = clean_instance_fields(ws_instances.to("cpu"))
     cs_instances_cpu = clean_instance_fields(cs_instances.to("cpu"))
 
-    # combine all instances
-    all_instances_cpu = Instances.cat([ws_instances_cpu, cs_instances_cpu])
-
-    # visualize resultsfcv2.im
     vis = Visualizer(image.copy(), metadata=metadata, scale=1.0)
-    output = vis.draw_instance_predictions(all_instances_cpu)
+    vis._default_font_size = 9
+    output = vis.draw_instance_predictions(Instances.cat([ws_instances_cpu, cs_instances_cpu]))
 
-    # Save the image in output folder
-    output_image = output.get_image()
-    output_path = output_folder + os.path.split(image_path)[1] + "_output.jpg"
+    # ---------------------------------------------------------------
+    # Optional: draw missed GTs in red
+    # ---------------------------------------------------------------
+    if draw_missed_gts:
+        dataset_dicts = DatasetCatalog.get(dataset_name)
+        img_gt = next((d for d in dataset_dicts if os.path.basename(d["file_name"]) == os.path.basename(image_path)), None)
+        if img_gt is not None and "annotations" in img_gt:
+            # Collect GT boxes of class 'sticker' (category_id == 4)
+            gt_boxes = []
+            for ann in img_gt["annotations"]:
+                if ann.get("category_id", -1) == 4:
+                    bbox = ann["bbox"]
+                    if ann["bbox_mode"] != BoxMode.XYXY_ABS:
+                        bbox = BoxMode.convert(bbox, ann["bbox_mode"], BoxMode.XYXY_ABS)
+                    gt_boxes.append(bbox)
+            
+            if gt_boxes:
+                gt_boxes = torch.tensor(gt_boxes, dtype=torch.float32)
+                if len(cs_instances_cpu) > 0:
+                    pred_boxes = cs_instances_cpu.pred_boxes.tensor
+                    ious = pairwise_iou(Boxes(gt_boxes), Boxes(pred_boxes))
+                    max_ious = ious.max(dim=1).values
+                else:
+                    max_ious = torch.zeros(len(gt_boxes))
+
+                missed_idxs = (max_ious < iou_thresh).nonzero(as_tuple=True)[0]
+
+                # Draw missed GT boxes in RED
+                for idx in missed_idxs:
+                    box = gt_boxes[idx].numpy()
+                    vis.draw_box(box, edge_color=(1.0, 0.0, 0.0))  # red
+                    vis.draw_text("MISS", (box[0], box[1] - 5), color="red", font_size=6)
+        else:
+            print(f"[!] No GT found for {image_path}")
+    # ---------------------------------------------------------------
+
+    output_image = vis.output.get_image()
+    output_path = os.path.join(output_folder, os.path.basename(image_path) + "_output.jpg")
     cv2.imwrite(output_path, cv2.cvtColor(output_image, cv2.COLOR_RGB2BGR))
     print(f"Saved image output to {output_path}")
 
@@ -265,71 +334,10 @@ for image_filename in image_files:
     ws_instances, cs_instances = detect_ws_then_cs(
     image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, MetadataCatalog.get(dataset_name), device=device
     )
+    visualize_result(image_path, ws_instances, cs_instances, draw_missed_gts=True)
 
 
     #ws_instances, cs_instances = detect_ws_then_cs(image_tensor, ws_model, cs_model, MetadataCatalog.get(dataset_name))
 
-    visualize_result(image_path, ws_instances, cs_instances)
-
-
-# Initialize heatmaps for both classes
-global_heatmap_ws = np.zeros((1280, 1280), dtype=np.float32)   # adjust if your test images differ
-global_heatmap_cs = np.zeros((1280, 1280), dtype=np.float32)
-
-for image_filename in image_files:
-    image_path = os.path.join(input_folder, image_filename)
-    image_bgr = cv2.imread(image_path)
-    if image_bgr is None:
-        continue
-
-    h, w = image_bgr.shape[:2]
-
-    # Get detections again (or store them during first loop if you prefer)
-    ws_instances, cs_instances = detect_ws_then_cs(
-        image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, MetadataCatalog.get(dataset_name), device=device
-    )
-
-    # Accumulate windshields
-    for box, score in zip(ws_instances.pred_boxes.tensor, ws_instances.scores):
-        x1, y1, x2, y2 = map(int, box.tolist())
-        x1, y1 = max(0, x1), max(0, y1)
-        x2, y2 = min(w, x2), min(h, y2)
-        global_heatmap_ws[y1:y2, x1:x2] += float(score)
-
-    # Accumulate stickers
-    for box, score in zip(cs_instances.pred_boxes.tensor, cs_instances.scores):
-        x1, y1, x2, y2 = map(int, box.tolist())
-        x1, y1 = max(0, x1), max(0, y1)
-        x2, y2 = min(w, x2), min(h, y2)
-        global_heatmap_cs[y1:y2, x1:x2] += float(score)
-
-# --- Apply Gaussian smoothing ---
-def smooth_and_save_heatmap(heatmap, output_name, base_image_path=None, sigma=25):
-    heatmap = cv2.GaussianBlur(heatmap, (0, 0), sigma)
-    if heatmap.max() > 0:
-        heatmap /= heatmap.max()
-    heatmap_color = cv2.applyColorMap((heatmap * 255).astype(np.uint8), cv2.COLORMAP_JET)
-
-    # Optionally overlay on an image
-    if base_image_path and os.path.exists(base_image_path):
-        base = cv2.imread(base_image_path)
-        base = cv2.resize(base, (heatmap.shape[1], heatmap.shape[0]))
-        blended = cv2.addWeighted(base, 0.6, heatmap_color, 0.4, 0)
-    else:
-        blended = heatmap_color
-
-    output_path = os.path.join(output_folder, output_name)
-    cv2.imwrite(output_path, blended)
-    print(f" Saved global heatmap: {output_path}")
-
-# Use one representative image for overlay
-sample_image = os.path.join(input_folder, image_files[0]) if image_files else None
-
-# Save each heatmap
-smooth_and_save_heatmap(global_heatmap_ws, "global_heatmap_windshield.jpg", sample_image)
-smooth_and_save_heatmap(global_heatmap_cs, "global_heatmap_sticker.jpg", sample_image)
-
-# Optional: combined heatmap (add both together)
-global_heatmap_combined = global_heatmap_ws + global_heatmap_cs
-smooth_and_save_heatmap(global_heatmap_combined, "global_heatmap_combined.jpg", sample_image)
+    #visualize_result(image_path, ws_instances, cs_instances) 
 

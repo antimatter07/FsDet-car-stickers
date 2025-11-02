@@ -42,4 +42,4 @@ for i, data in enumerate(dataset_dicts):
 
     print(f"[{i+1}/{len(dataset_dicts)}] Saved GT visualization to: {save_path}")
 
-print(f"\n✅ Done! All GT visualizations saved to: {output_folder}")
+print(f"\n Done! All GT visualizations saved to: {output_folder}")
