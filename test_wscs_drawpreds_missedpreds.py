@@ -231,7 +231,7 @@ def clean_instance_fields(instances):
     """
     Remove unnecessary tensor labels (pred_masks, etc.) to make visualization cleaner.
     """
-    # --- Clone safely (works in older Detectron2/FsDet) ---
+    # Clone
     new_instances = Instances(instances.image_size)
     for k, v in instances.get_fields().items():
         new_instances.set(k, v.clone() if torch.is_tensor(v) else v)
@@ -246,8 +246,12 @@ def clean_instance_fields(instances):
 
 def visualize_result(image_path, ws_instances, cs_instances, draw_missed_gts=False, iou_thresh=0.5):
     """
-    Visualizes predictions, and optionally draws missed GT boxes (in red)
-    if the sticker model failed to detect them above the IoU threshold.
+    Visualizes predictions.
+    - Correct detections (IoU ≥ threshold) → green
+    - False positives → orange
+    - Missed GTs → red
+    - Removes random Detectron colors and class text.
+    - Uniform white text for labels and confidences.
     """
     image_bgr = cv2.imread(image_path)
     image = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
@@ -260,48 +264,82 @@ def visualize_result(image_path, ws_instances, cs_instances, draw_missed_gts=Fal
 
     vis = Visualizer(image.copy(), metadata=metadata, scale=1.0)
     vis._default_font_size = 9
-    output = vis.draw_instance_predictions(Instances.cat([ws_instances_cpu, cs_instances_cpu]))
 
-    # ---------------------------------------------------------------
-    # Optional: draw missed GTs in red
-    # ---------------------------------------------------------------
-    if draw_missed_gts:
-        dataset_dicts = DatasetCatalog.get(dataset_name)
-        img_gt = next((d for d in dataset_dicts if os.path.basename(d["file_name"]) == os.path.basename(image_path)), None)
-        if img_gt is not None and "annotations" in img_gt:
-            # Collect GT boxes of class 'sticker' (category_id == 4)
-            gt_boxes = []
-            for ann in img_gt["annotations"]:
-                if ann.get("category_id", -1) == 4:
-                    bbox = ann["bbox"]
-                    if ann["bbox_mode"] != BoxMode.XYXY_ABS:
-                        bbox = BoxMode.convert(bbox, ann["bbox_mode"], BoxMode.XYXY_ABS)
-                    gt_boxes.append(bbox)
-            
-            if gt_boxes:
-                gt_boxes = torch.tensor(gt_boxes, dtype=torch.float32)
-                if len(cs_instances_cpu) > 0:
-                    pred_boxes = cs_instances_cpu.pred_boxes.tensor
-                    ious = pairwise_iou(Boxes(gt_boxes), Boxes(pred_boxes))
-                    max_ious = ious.max(dim=1).values
-                else:
-                    max_ious = torch.zeros(len(gt_boxes))
+    # ------------------------------------------------------------------
+    # Custom: draw predictions manually (uniform white color)
+    # ------------------------------------------------------------------
+    for inst in [ws_instances_cpu, cs_instances_cpu]:
+        boxes = inst.pred_boxes.tensor.numpy()
+        scores = inst.scores.numpy()
+        for box, score in zip(boxes, scores):
+            vis.draw_box(box, edge_color=(1.0, 1.0, 1.0))  # white outline
+            vis.draw_text(f"{score:.2f}", (box[0], box[1] - 5),
+                          color=(1.0, 1.0, 1.0), font_size=6)
 
-                missed_idxs = (max_ious < iou_thresh).nonzero(as_tuple=True)[0]
+    # ------------------------------------------------------------------
+    # Evaluate stickers (TP / FP / MISS)
+    # ------------------------------------------------------------------
+    dataset_dicts = DatasetCatalog.get(dataset_name)
+    img_gt = next((d for d in dataset_dicts
+                   if os.path.basename(d["file_name"]) == os.path.basename(image_path)), None)
 
-                # Draw missed GT boxes in RED
-                for idx in missed_idxs:
-                    box = gt_boxes[idx].numpy()
-                    vis.draw_box(box, edge_color=(1.0, 0.0, 0.0))  # red
-                    vis.draw_text("MISS", (box[0], box[1] - 5), color="red", font_size=6)
+    if img_gt is not None and "annotations" in img_gt:
+        gt_boxes = []
+        for ann in img_gt["annotations"]:
+            if ann.get("category_id", -1) == 4:  # sticker class
+                bbox = ann["bbox"]
+                if ann["bbox_mode"] != BoxMode.XYXY_ABS:
+                    bbox = BoxMode.convert(bbox, ann["bbox_mode"], BoxMode.XYXY_ABS)
+                gt_boxes.append(bbox)
+
+        gt_boxes = torch.tensor(gt_boxes, dtype=torch.float32) if gt_boxes else torch.empty((0, 4))
+
+        if len(gt_boxes) > 0:
+            pred_boxes = cs_instances_cpu.pred_boxes.tensor if len(cs_instances_cpu) > 0 else torch.empty((0, 4))
+            ious = pairwise_iou(Boxes(gt_boxes), Boxes(pred_boxes)) if len(pred_boxes) > 0 else torch.zeros((len(gt_boxes), 0))
+
+            # Determine correct/FP/missed
+            max_ious_pred, _ = ious.max(dim=0) if ious.numel() > 0 else (torch.zeros(len(pred_boxes)), None)
+            max_ious_gt, _ = ious.max(dim=1) if ious.numel() > 0 else (torch.zeros(len(gt_boxes)), None)
+
+            correct_pred_idxs = (max_ious_pred >= iou_thresh).nonzero(as_tuple=True)[0]
+            false_pred_idxs = (max_ious_pred < iou_thresh).nonzero(as_tuple=True)[0]
+            missed_gt_idxs = (max_ious_gt < iou_thresh).nonzero(as_tuple=True)[0]
+
+            # --- True Positives: Green
+            for idx in correct_pred_idxs:
+                box = pred_boxes[idx].numpy()
+                conf = cs_instances_cpu.scores[idx].item() if idx < len(cs_instances_cpu.scores) else 0
+                vis.draw_box(box, edge_color=(0.0, 1.0, 0.0))
+                vis.draw_text(f"TP {conf:.2f}", (box[0], box[1] - 5),
+                              color=(1.0, 1.0, 1.0), font_size=6)
+
+            # --- False Positives: Orange
+            for idx in false_pred_idxs:
+                box = pred_boxes[idx].numpy()
+                conf = cs_instances_cpu.scores[idx].item() if idx < len(cs_instances_cpu.scores) else 0
+                vis.draw_box(box, edge_color=(1.0, 0.65, 0.0))
+                vis.draw_text(f"FP {conf:.2f}", (box[0], box[1] - 5),
+                              color=(1.0, 1.0, 1.0), font_size=6)
+
+            # --- Missed GTs: Red
+            for idx in missed_gt_idxs:
+                box = gt_boxes[idx].numpy()
+                vis.draw_box(box, edge_color=(1.0, 0.0, 0.0))
+                vis.draw_text("MISS", (box[0], box[1] - 5),
+                              color=(1.0, 1.0, 1.0), font_size=6)
         else:
-            print(f"[!] No GT found for {image_path}")
-    # ---------------------------------------------------------------
+            print(f"[!] No GT sticker boxes found for {image_path}")
+    else:
+        print(f"[!] No GT found for {image_path}")
 
+    # Save visualization
     output_image = vis.output.get_image()
     output_path = os.path.join(output_folder, os.path.basename(image_path) + "_output.jpg")
     cv2.imwrite(output_path, cv2.cvtColor(output_image, cv2.COLOR_RGB2BGR))
     print(f"Saved image output to {output_path}")
+
+
 
 
 # Delete all files and subfolders and the ouput folder
