@@ -329,17 +329,17 @@ def visualize_result(image_path, ws_instances, cs_instances, draw_missed_gts=Fal
     vis._default_font_size = 9
 
     for inst in [ws_instances_cpu, cs_instances_cpu]:
-    boxes = inst.pred_boxes.tensor.numpy()
-    scores = inst.scores.numpy()
-    if inst is ws_instances_cpu:
-        color = (0.0, 0.0, 0.5)  # dark blue
-    else:
-        color = (1.0, 1.0, 1.0)  # white
-
-    for box, score in zip(boxes, scores):
-        vis.draw_box(box, edge_color=color)
-        vis.draw_text(f"{score:.2f}", (box[0], box[1] - 5),
-                      color=color, font_size=6)
+        boxes = inst.pred_boxes.tensor.numpy()
+        scores = inst.scores.numpy()
+        if inst is ws_instances_cpu:
+            box_color = (0.0, 0.0, 0.5)  # dark blue
+        else:
+            box_color = (1.0, 1.0, 1.0)  # white
+    
+        for box, score in zip(boxes, scores):
+            vis.draw_box(box, edge_color=box_color)
+            vis.draw_text(f"{score:.2f}", (box[0], box[1] - 5),
+                          color=(1.0, 1.0, 1.0), font_size=6)  # white text accross all
 
     # Evaluate stickers (TP, FP, or missed detection)
     dataset_dicts = DatasetCatalog.get(dataset_name)
@@ -374,16 +374,15 @@ def visualize_result(image_path, ws_instances, cs_instances, draw_missed_gts=Fal
                 box = pred_boxes[idx].numpy()
                 conf = cs_instances_cpu.scores[idx].item() if idx < len(cs_instances_cpu.scores) else 0
                 vis.draw_box(box, edge_color=(0.0, 1.0, 0.0))
-                vis.draw_text(f"TP {conf:.2f}", (box[0], box[1] - 5),
-                              color=(1.0, 1.0, 1.0), font_size=6)
+                
+                vis.draw_text(f"{conf:.2f}", (box[0], box[1] - 5), color=(1.0, 1.0, 1.0), font_size=6)
 
             # False Positives: Orange
             for idx in false_pred_idxs:
                 box = pred_boxes[idx].numpy()
                 conf = cs_instances_cpu.scores[idx].item() if idx < len(cs_instances_cpu.scores) else 0
                 vis.draw_box(box, edge_color=(1.0, 0.65, 0.0))
-                vis.draw_text(f"FP {conf:.2f}", (box[0], box[1] - 5),
-                              color=(1.0, 1.0, 1.0), font_size=6)
+                vis.draw_text(f"{conf:.2f}", (box[0], box[1] - 5), color=(1.0, 1.0, 1.0), font_size=6)
 
             # Missed GTs: Red
             for idx in missed_gt_idxs:

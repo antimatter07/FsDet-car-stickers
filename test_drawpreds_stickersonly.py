@@ -1,77 +1,42 @@
 """
 test_drawpreds_stickersonly.py
 
-Visualize sticker predictions on test set of each k-shot split for sticker only (no windshield-guided pipeline yet)
-
-This script implements performs inference with a sticker detector trained on sticker annotations on the full-image and
-draws predictions made by the model with Detectron2's visualizer in the output folder.
-
+Visualize sticker detections only (no windshield model).
+Works with Detectron2 v0.4 / FsDet models.
+All bounding boxes have uniform white labels.
 """
 
-
-# cs = car stickers
-import json
 import os
 import cv2
-import numpy as np
 import torch
-from PIL import Image
+import shutil
+import numpy as np
 from fsdet.config import get_cfg
 from fsdet.modeling import GeneralizedRCNN
 from fsdet.checkpoint import DetectionCheckpointer
-from fsdet.data.meta_stickers import register_meta_stickers
-from detectron2.modeling.postprocessing import detector_postprocess
-from detectron2.data import MetadataCatalog, DatasetCatalog
-from detectron2.structures import Boxes, Instances
-import shutil
-
+from detectron2.structures import Boxes, Instances, BoxMode, pairwise_iou
 from detectron2.utils.visualizer import Visualizer
+from detectron2.data import MetadataCatalog, DatasetCatalog
 import detectron2.data.transforms as T
 
 import fsdet.data.builtin # registers all datasets
 
 
-# Test the FULL IMAGES
-#input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder
-output_folder = "results/stickers_only/predictions_visualization/31_shot/" # output to save processed images
-# NEED to set dataset name for retrieving the test set data
-dataset_name = "stickers_31shot_1280_test_tinyonly_top4" # registered name of the test dataset
+output_folder = "results/test_10shot_drawpreds_stickersonly/"
+dataset_name = "stickers_10shot_1280_test_tinyonly_top4"
 input_folder = MetadataCatalog.get(dataset_name).image_root
-
-STICKERS_SCORE_THRESHOLD = 0.0
+STICKERS_SCORE_THRESHOLD = 0.10
+IOU_THRESH = 0.5
 
 os.makedirs(output_folder, exist_ok=True)
 torch.cuda.empty_cache()
-
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"  # SET GPU HERE
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print("CURRENT DEVICE: ", device)
+print("CURRENT DEVICE:", device)
 
-# Load FsDet model
+
+
 def load_model(config_path, weights_path):
-    """
-    Loads a Detectron2 model and its configuration for performing inference.
-
-    This function reads a YAML configuration file and initializes a Detectron2
-    GeneralizedRCNN model using the specified weights. It also prepares the
-    cfg configuration object that defines model and preprocessing parameters.
-
-    Args:
-        config_path (str): Path to the YAML file containing the model configuration.
-        weights_path (str): Path to the model weights (.pth) file.
-
-    Returns:
-        tuple:
-            model (torch.nn.Module): The loaded Detectron2 model, set to evaluation mode.
-            cfg (CfgNode): The Detectron2 configuration object associated with the model.
-
-    Raises:
-        FileNotFoundError: If the specified configuration or weight file does not exist.
-        RuntimeError: If model loading or checkpoint restoration fails.
-    
-    """
-    torch.cuda.empty_cache()
-
     cfg = get_cfg()
     cfg.merge_from_file(config_path)
     cfg.MODEL.WEIGHTS = weights_path
@@ -79,128 +44,145 @@ def load_model(config_path, weights_path):
     model = GeneralizedRCNN(cfg)
     DetectionCheckpointer(model).load(cfg.MODEL.WEIGHTS)
     model.to(device).eval()
-
     return model, cfg
 
 
 # For 31-shot
-# fsdet/FsDet-car-stickers/configs/stickers-detection/stickers_only_31shot.yaml
-# fsdet/FsDet-car-stickers/results/stickers_only/31shot/best/model_0000999.pth
+# configs/stickers-detection/stickers_only_31shot.yaml
+# results/stickers_only/31shot/best/model_0000999.pth
 
 # For 10-shot
-
+# results/stickers_only/10shot/best/model_0003199.pth
+#  configs/stickers-detection/stickers_only_10shot.yaml
 # For 5-shot
-
+# results/stickers_only/5shot_bs2/best (iter 1400 highest ap50)/model_0001399.pth
+# configs/stickers-detection/stickers_only_5shot.yaml
 # For 2-shot
+# configs/stickers-detection/stickers_only_2shot.yaml
+#  results/stickers_only/2shot/best/model_0001799.pth
 cs_model, cs_cfg = load_model(
-    "configs/stickers-detection/stickers_only_31shot.yaml",
-    "results/stickers_only/31shot/best/model_0000999.pth"
+    "configs/stickers-detection/stickers_only_10shot.yaml",
+    "results/stickers_only/10shot/best/model_0003199.pth"
 )
 
 
-def create_empty_instances(height, width):
-    empty_instances = Instances((height, width))
-    empty_instances.pred_boxes = Boxes(torch.empty((0, 4)).to(device))
-    empty_instances.scores = torch.empty((0,)).to(device)
-    empty_instances.pred_classes = torch.empty((0,), dtype=torch.int64).to(device)
-
-    return empty_instances
-
-
+# ==============================
+# PREPROCESSING
+# ==============================
 def prepare_input_for_model(image_bgr, cfg, device):
-    """
-    Matches Detectron2's DefaultPredictor preprocessing:
-    1. Resize shortest edge.
-    2. Convert to float32 tensor.
-    3. Pass original height/width for proper scaling.
-    """
     transform_gen = T.ResizeShortestEdge(
         [cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MIN_SIZE_TEST],
         cfg.INPUT.MAX_SIZE_TEST,
     )
     height, width = image_bgr.shape[:2]
     image_resized = transform_gen.get_transform(image_bgr).apply_image(image_bgr)
-
-    # Convert to torch tensor (C, H, W)
     image_tensor = torch.as_tensor(image_resized.astype("float32").transpose(2, 0, 1))
-
-    # Return input dict (model handles normalization internally)
     return {"image": image_tensor.to(device), "height": height, "width": width}
 
 
-
+# ==============================
+# DETECTION
+# ==============================
 @torch.no_grad()
-def detect_cs(image_bgr, cs_model, cs_cfg, metadata, device="cuda"):
+def detect_stickers(image_bgr, cs_model, cs_cfg):
+    inputs = prepare_input_for_model(image_bgr, cs_cfg, device)
+    outputs = cs_model([inputs])[0]
+    instances = outputs["instances"].to("cpu")
 
-     # Required pre-processing for image
-    cs_inputs = prepare_input_for_model(image_bgr, cs_cfg, device)
-    cs_outputs = cs_model([cs_inputs])[0]
-
-    cs_instances = detector_postprocess(
-            cs_outputs["instances"].to("cpu"), cs_inputs["height"], cs_inputs["width"]
-    )
-
-    keep = (cs_instances.pred_classes == 4) & (cs_instances.scores >= STICKERS_SCORE_THRESHOLD)
-    cs_instances = cs_instances[keep]
-    
-    # Combine all sticker predictions
-    if len(cs_instances) == 0:
-        # Create empty instances with all fields defined
-        height, width = image_bgr.shape[:2]
-        cs_instances = create_empty_instances(height, width)
-    return cs_instances
-        
+    keep = (instances.pred_classes == 4) & (instances.scores >= STICKERS_SCORE_THRESHOLD)
+    instances = instances[keep]
+    return instances
 
 
-
+# ==============================
+# VISUALIZATION HELPERS
+# ==============================
 def clean_instance_fields(instances):
-    """
-    Remove unnecessary tensor labels (pred_masks, etc.) to make visualization cleaner.
-    """
-    # --- Clone safely (works in older Detectron2/FsDet) ---
     new_instances = Instances(instances.image_size)
     for k, v in instances.get_fields().items():
         new_instances.set(k, v.clone() if torch.is_tensor(v) else v)
-
-    # Remove mask/tensor fields that clutter visualization
     for field in ["pred_masks", "gt_boxes", "gt_classes"]:
         if hasattr(new_instances, field):
             delattr(new_instances, field)
-
     return new_instances
-    
 
-def visualize_result(image_path, cs_instances):
+
+def visualize_result(image_path, cs_instances, draw_missed_gts=True):
     image_bgr = cv2.imread(image_path)
     image = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-    
     metadata = MetadataCatalog.get(dataset_name)
-    metadata.thing_classes = ["class0", "class1", "class2", "class3", "sticker"]
+    metadata.thing_classes = ["class0", "class1", "class2", "class3", "sticker", "windshield"]
 
-    # move to CPU for Visualizer
     cs_instances_cpu = clean_instance_fields(cs_instances.to("cpu"))
-
-
-
-    # visualize resultsfcv2.im
     vis = Visualizer(image.copy(), metadata=metadata, scale=1.0)
-    output = vis.draw_instance_predictions(cs_instances_cpu)
+    vis._default_font_size = 9
 
-    # Save the image in output folder
-    output_image = output.get_image()
-    output_path = output_folder + os.path.split(image_path)[1] + "_output.jpg"
+    # Draw all predicted boxes in white
+    for box, score in zip(cs_instances_cpu.pred_boxes.tensor.numpy(), cs_instances_cpu.scores.numpy()):
+        vis.draw_box(box, edge_color=(1.0, 1.0, 1.0))
+        vis.draw_text(f"{score:.2f}", (box[0], box[1] - 5), color=(1.0, 1.0, 1.0), font_size=6)
+
+    # Load ground truths to mark TP/FP/Missed
+    dataset_dicts = DatasetCatalog.get(dataset_name)
+    img_gt = next((d for d in dataset_dicts
+                   if os.path.basename(d["file_name"]) == os.path.basename(image_path)), None)
+
+    if img_gt is not None and "annotations" in img_gt:
+        gt_boxes = []
+        for ann in img_gt["annotations"]:
+            if ann.get("category_id", -1) == 4:  # sticker class
+                bbox = ann["bbox"]
+                if ann["bbox_mode"] != BoxMode.XYXY_ABS:
+                    bbox = BoxMode.convert(bbox, ann["bbox_mode"], BoxMode.XYXY_ABS)
+                gt_boxes.append(bbox)
+        gt_boxes = torch.tensor(gt_boxes, dtype=torch.float32) if gt_boxes else torch.empty((0, 4))
+
+        if len(gt_boxes) > 0:
+            pred_boxes = cs_instances_cpu.pred_boxes.tensor if len(cs_instances_cpu) > 0 else torch.empty((0, 4))
+            ious = pairwise_iou(Boxes(gt_boxes), Boxes(pred_boxes)) if len(pred_boxes) > 0 else torch.zeros((len(gt_boxes), 0))
+            max_ious_pred, _ = ious.max(dim=0) if ious.numel() > 0 else (torch.zeros(len(pred_boxes)), None)
+            max_ious_gt, _ = ious.max(dim=1) if ious.numel() > 0 else (torch.zeros(len(gt_boxes)), None)
+
+            correct_pred_idxs = (max_ious_pred >= IOU_THRESH).nonzero(as_tuple=True)[0]
+            false_pred_idxs = (max_ious_pred < IOU_THRESH).nonzero(as_tuple=True)[0]
+            missed_gt_idxs = (max_ious_gt < IOU_THRESH).nonzero(as_tuple=True)[0]
+
+            # True Positives: Green
+            for idx in correct_pred_idxs:
+                box = pred_boxes[idx].numpy()
+                conf = cs_instances_cpu.scores[idx].item()
+                vis.draw_box(box, edge_color=(0.0, 1.0, 0.0))
+                vis.draw_text(f"{conf:.2f}", (box[0], box[1] - 5), color=(1.0, 1.0, 1.0), font_size=6)
+
+            # False Positives: Orange
+            for idx in false_pred_idxs:
+                box = pred_boxes[idx].numpy()
+                conf = cs_instances_cpu.scores[idx].item()
+                vis.draw_box(box, edge_color=(1.0, 0.65, 0.0))
+                vis.draw_text(f"{conf:.2f}", (box[0], box[1] - 5), color=(1.0, 1.0, 1.0), font_size=6)
+
+            # Missed GTs: Red
+            for idx in missed_gt_idxs:
+                box = gt_boxes[idx].numpy()
+                vis.draw_box(box, edge_color=(1.0, 0.0, 0.0))
+                vis.draw_text("MISS", (box[0], box[1] - 5), color=(1.0, 1.0, 1.0), font_size=6)
+
+    output_image = vis.output.get_image()
+    output_path = os.path.join(output_folder, os.path.basename(image_path) + "_output.jpg")
     cv2.imwrite(output_path, cv2.cvtColor(output_image, cv2.COLOR_RGB2BGR))
-    print(f"Saved image output to {output_path}")
+    print(f"Saved: {output_path}")
 
 
-# Delete all files and subfolders and the ouput folder
+# ==============================
+# MAIN LOOP
+# ==============================
 def clear_output_folder():
     if os.path.exists(output_folder):
         for filename in os.listdir(output_folder):
             file_path = os.path.join(output_folder, filename)
             try:
                 if os.path.isfile(file_path) or os.path.islink(file_path):
-                    os.unlink(file_path) 
+                    os.unlink(file_path)
                 elif os.path.isdir(file_path):
                     shutil.rmtree(file_path)
             except Exception as e:
@@ -210,22 +192,12 @@ def clear_output_folder():
 
 
 clear_output_folder()
-
-# Get all image files from the folder
 image_files = [f for f in os.listdir(input_folder) if f.lower().endswith((".jpg", ".jpeg"))]
-print("> Image file count: ", len(image_files))
-print("> Dataset name: ", dataset_name)
+print("> Image file count:", len(image_files))
+print("> Dataset name:", dataset_name)
 
 for image_filename in image_files:
     image_path = os.path.join(input_folder, image_filename)
- 
     image_bgr = cv2.imread(image_path)
-    cs_instances = detect_cs(
-    image_bgr, cs_model, cs_cfg, MetadataCatalog.get(dataset_name), device=device
-    )
-
-
-    #ws_instances, cs_instances = detect_ws_then_cs(image_tensor, ws_model, cs_model, MetadataCatalog.get(dataset_name))
-
-    visualize_result(image_path, cs_instances) 
-
+    cs_instances = detect_stickers(image_bgr, cs_model, cs_cfg)
+    visualize_result(image_path, cs_instances, draw_missed_gts=True)

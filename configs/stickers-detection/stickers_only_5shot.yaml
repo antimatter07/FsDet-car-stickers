@@ -38,4 +38,4 @@ SOLVER:
   CHECKPOINT_PERIOD: 200
   WARMUP_ITERS: 10
 # checkpoints/stickers/stickers_31shot_tinyonly_top4_8_random_all_5000iters_lr001_unfreeze/checkpoint
-OUTPUT_DIR: "results/stickers_only/5shot"
+OUTPUT_DIR: "results/stickers_only/5shot_bs2"
