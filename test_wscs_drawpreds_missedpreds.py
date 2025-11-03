@@ -3,9 +3,17 @@ test_wscs_drawpreds.py
 
 Implementation of the full windshield-guided detection pipeline.
 
-This script implements the windshield-guided detection pipeline. Given a test dataset and path to weights of 
-both the windshield model and sticker model, the script goes through each image and performs inference using
-the proposed detection pipeline. 
+This script implements the windshield-guided detection pipeline. Given a test
+dataset and path to weights of both the windshield model and sticker model,
+the script performs inference on each test image and visualizes the detection
+results.
+
+Steps:
+    1. Detect windshields on the full image.
+    2. Crop each windshield region.
+    3. Detect car stickers within each crop.
+    4. Map sticker detections back to full-image coordinates.
+    5. Visualize detections with true positives, false positives, and missed boxes.
 """
 
 # --- ACRONYMS ---
@@ -136,6 +144,16 @@ def detect_only_class(img, model, class_id, score_threshold):
 
 
 def create_empty_instances(height, width):
+    """
+    Create an empty Detectron2 Instances object.
+
+    Args:
+        height (int): Image height.
+        width (int): Image width.
+
+    Returns:
+        Instances: Empty Instances object with zero boxes, scores, and classes.
+    """
     empty_instances = Instances((height, width))
     empty_instances.pred_boxes = Boxes(torch.empty((0, 4)).to(device))
     empty_instances.scores = torch.empty((0,)).to(device)
@@ -146,10 +164,18 @@ def create_empty_instances(height, width):
 
 def prepare_input_for_model(image_bgr, cfg, device):
     """
-    Matches Detectron2's DefaultPredictor preprocessing:
-    1. Resize shortest edge.
-    2. Convert to float32 tensor.
-    3. Pass original height/width for proper scaling.
+    Prepare image input according to preprocessing required for doing inference.
+
+    This function resizes the image, converts it to a tensor, and includes
+    the original image dimensions.
+
+    Args:
+        image_bgr (np.ndarray): Original BGR image.
+        cfg (CfgNode): Detectron2 configuration used by the model.
+        device (torch.device): Target device ('cuda' or 'cpu').
+
+    Returns:
+        dict: Input dictionary ready for model inference.
     """
     transform_gen = T.ResizeShortestEdge(
         [cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MIN_SIZE_TEST],
@@ -167,12 +193,29 @@ def prepare_input_for_model(image_bgr, cfg, device):
 @torch.no_grad()
 def detect_ws_then_cs(image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, metadata, device="cuda"):
     """
-    1. Run windshield model on the full image.
-    2. For each windshield detection, crop that region.
-    3. Run the sticker model on the crop.
-    4. Map sticker detections back to full image coordinates.
+    Perform sequential windshield and sticker detection.
+
+    The function:
+        1. Detects windshields on the full image.
+        2. Crops each detected windshield region.
+        3. Runs the sticker model on each crop.
+        4. Maps detected sticker boxes back to the original coordinates.
+
+    Args:
+        image_bgr (np.ndarray): Input image in BGR format.
+        ws_model (torch.nn.Module): Windshield detection model.
+        cs_model (torch.nn.Module): Sticker detection model.
+        ws_cfg (CfgNode): Windshield model configuration.
+        cs_cfg (CfgNode): Sticker model configuration.
+        metadata (Metadata): Dataset metadata for visualization.
+        device (str, optional): Device to perform inference on. Defaults to "cuda".
+
+    Returns:
+        tuple:
+            ws_instances (Instances): Detected windshield instances.
+            cs_instances (Instances): Detected sticker instances mapped to full image.
     """
-    # --- STEP 1: Detect windshields on full image ---
+    # Detect windshields on full image
     ws_inputs = prepare_input_for_model(image_bgr, ws_cfg, device)
     ws_outputs = ws_model([ws_inputs])[0]
 
@@ -185,7 +228,7 @@ def detect_ws_then_cs(image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, metadata, d
 
     cs_instances_all = []
 
-    # --- STEP 2: For each windshield box, crop and detect stickers ---
+    # For each windshield box, crop and detect stickers
     for i, box in enumerate(ws_instances.pred_boxes):
         x1, y1, x2, y2 = map(int, box.tolist())
         crop = image_bgr[y1:y2, x1:x2]
@@ -203,7 +246,7 @@ def detect_ws_then_cs(image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, metadata, d
         keep = (cs_instances.pred_classes == 4) & (cs_instances.scores >= STICKERS_SCORE_THRESHOLD)
         cs_instances = cs_instances[keep]
 
-        # --- STEP 3: Shift sticker boxes to full image coordinates ---
+        # Shift stickers to full coordinate
         if len(cs_instances) > 0:
             cs_boxes = cs_instances.pred_boxes.tensor
             cs_boxes[:, 0::2] += x1  # shift x1, x2
@@ -217,7 +260,7 @@ def detect_ws_then_cs(image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, metadata, d
             )
             cs_instances_all.append(shifted_instances)
 
-    # --- STEP 4: Combine all sticker detections ---
+    # Combine all sticker detections
     if len(cs_instances_all) > 0:
         cs_instances = Instances.cat(cs_instances_all)
     else:
@@ -229,7 +272,16 @@ def detect_ws_then_cs(image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, metadata, d
 
 def clean_instance_fields(instances):
     """
-    Remove unnecessary tensor labels (pred_masks, etc.) to make visualization cleaner.
+    Clean unnecessary fields from Instances for visualization.
+
+    Removes heavy tensor fields such as masks and ground-truth data
+    to simplify visualization and reduce memory usage.
+
+    Args:
+        instances (Instances): Input Detectron2 Instances.
+
+    Returns:
+        Instances: A shallow copy of the input with unused fields removed.
     """
     # Clone
     new_instances = Instances(instances.image_size)
@@ -246,12 +298,23 @@ def clean_instance_fields(instances):
 
 def visualize_result(image_path, ws_instances, cs_instances, draw_missed_gts=False, iou_thresh=0.5):
     """
-    Visualizes predictions.
-    - Correct detections (IoU ≥ threshold) → green
-    - False positives → orange
-    - Missed GTs → red
-    - Removes random Detectron colors and class text.
-    - Uniform white text for labels and confidences.
+    Visualize detection results with color-coded boxes.
+
+    Visualization key:
+        - True positives (IoU >= threshold): Green
+        - False positives: Orange
+        - Missed ground truths: Red
+        - Regular predictions: White
+
+    Args:
+        image_path (str): Path to the original test image.
+        ws_instances (Instances): Detected windshield instances.
+        cs_instances (Instances): Detected sticker instances.
+        draw_missed_gts (bool, optional): Whether to visualize missed ground truths. Defaults to False.
+        iou_thresh (float, optional): IoU threshold for correctness. Defaults to 0.5.
+
+    Returns:
+        None. Saves visualized image to output_folder.
     """
     image_bgr = cv2.imread(image_path)
     image = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
@@ -265,20 +328,20 @@ def visualize_result(image_path, ws_instances, cs_instances, draw_missed_gts=Fal
     vis = Visualizer(image.copy(), metadata=metadata, scale=1.0)
     vis._default_font_size = 9
 
-    # ------------------------------------------------------------------
-    # Custom: draw predictions manually (uniform white color)
-    # ------------------------------------------------------------------
     for inst in [ws_instances_cpu, cs_instances_cpu]:
         boxes = inst.pred_boxes.tensor.numpy()
         scores = inst.scores.numpy()
+        if inst is ws_instances_cpu:
+            box_color = (0.0, 0.0, 0.5)  # dark blue
+        else:
+            box_color = (1.0, 1.0, 1.0)  # white
+    
         for box, score in zip(boxes, scores):
-            vis.draw_box(box, edge_color=(1.0, 1.0, 1.0))  # white outline
+            vis.draw_box(box, edge_color=box_color)
             vis.draw_text(f"{score:.2f}", (box[0], box[1] - 5),
-                          color=(1.0, 1.0, 1.0), font_size=6)
+                          color=(1.0, 1.0, 1.0), font_size=6)  # white text accross all
 
-    # ------------------------------------------------------------------
-    # Evaluate stickers (TP / FP / MISS)
-    # ------------------------------------------------------------------
+    # Evaluate stickers (TP, FP, or missed detection)
     dataset_dicts = DatasetCatalog.get(dataset_name)
     img_gt = next((d for d in dataset_dicts
                    if os.path.basename(d["file_name"]) == os.path.basename(image_path)), None)
@@ -306,23 +369,22 @@ def visualize_result(image_path, ws_instances, cs_instances, draw_missed_gts=Fal
             false_pred_idxs = (max_ious_pred < iou_thresh).nonzero(as_tuple=True)[0]
             missed_gt_idxs = (max_ious_gt < iou_thresh).nonzero(as_tuple=True)[0]
 
-            # --- True Positives: Green
+            # True Positives: Green
             for idx in correct_pred_idxs:
                 box = pred_boxes[idx].numpy()
                 conf = cs_instances_cpu.scores[idx].item() if idx < len(cs_instances_cpu.scores) else 0
                 vis.draw_box(box, edge_color=(0.0, 1.0, 0.0))
-                vis.draw_text(f"TP {conf:.2f}", (box[0], box[1] - 5),
-                              color=(1.0, 1.0, 1.0), font_size=6)
+                
+                vis.draw_text(f"{conf:.2f}", (box[0], box[1] - 5), color=(1.0, 1.0, 1.0), font_size=6)
 
-            # --- False Positives: Orange
+            # False Positives: Orange
             for idx in false_pred_idxs:
                 box = pred_boxes[idx].numpy()
                 conf = cs_instances_cpu.scores[idx].item() if idx < len(cs_instances_cpu.scores) else 0
                 vis.draw_box(box, edge_color=(1.0, 0.65, 0.0))
-                vis.draw_text(f"FP {conf:.2f}", (box[0], box[1] - 5),
-                              color=(1.0, 1.0, 1.0), font_size=6)
+                vis.draw_text(f"{conf:.2f}", (box[0], box[1] - 5), color=(1.0, 1.0, 1.0), font_size=6)
 
-            # --- Missed GTs: Red
+            # Missed GTs: Red
             for idx in missed_gt_idxs:
                 box = gt_boxes[idx].numpy()
                 vis.draw_box(box, edge_color=(1.0, 0.0, 0.0))
@@ -344,6 +406,15 @@ def visualize_result(image_path, ws_instances, cs_instances, draw_missed_gts=Fal
 
 # Delete all files and subfolders and the ouput folder
 def clear_output_folder():
+    """
+    Clear or create the output folder before visualization.
+
+    Deletes all files and subdirectories under the global output folder.
+    If the folder does not exist, it is created.
+
+    Returns:
+        None
+    """
     if os.path.exists(output_folder):
         for filename in os.listdir(output_folder):
             file_path = os.path.join(output_folder, filename)
