@@ -112,6 +112,7 @@ def compare_boxes(gt_boxes, pred_boxes, ws_boxes, iou_thresh=0.5):
     fp = 0
     tp_left = tp_right = 0
     fn_left = fn_right = 0
+    fp_left = fp_right = 0
 
     # determine car sticker GT alignments
     gt_alignments = [get_alignment(g, ws_boxes) for g in gt_boxes]
@@ -138,7 +139,12 @@ def compare_boxes(gt_boxes, pred_boxes, ws_boxes, iou_thresh=0.5):
             else:
                 tp_right += 1
         else:
-            fp+=1         
+            fp+=1
+            fp_alignment = get_alignment(p_box, ws_boxes)
+            if fp_alignment == "left":
+                fp_left += 1
+            else:
+                fp_right += 1
 
     fn = len(gt_boxes) - len(matched_gt)
 
@@ -159,12 +165,12 @@ def evaluate_images(img_ids, iou_thresh=0.5):
     cs_gt = load_gt_by_image(cs_category_id)
     pred = load_pred_by_image()
 
-    APs = []
-    ARs = []
+    precisions = []
+    recalls = []
 
     total_gt_left = total_gt_right = 0
     total_tp_left = total_tp_right = 0
-    AR50_left = AR50_right = 0
+    total_fp_left = total_fp_right = 0
 
     for image_id in img_ids:
         g = cs_gt.get(image_id, [])
@@ -174,8 +180,8 @@ def evaluate_images(img_ids, iou_thresh=0.5):
         tp, fp, fn, tp_left, tp_right, fp_left, fp_right, fn_left, fn_right = compare_boxes(g, p, ws_boxes, iou_thresh)
         prec = tp / (tp + fp + 1e-6)
         rec  = tp / (tp + fn + 1e-6)
-        APs.append(prec)
-        ARs.append(rec)
+        precisions.append(prec)
+        recalls.append(rec)
         
         total_gt_left  += (tp_left + fn_left)
         total_gt_right += (tp_right + fn_right)
@@ -183,11 +189,14 @@ def evaluate_images(img_ids, iou_thresh=0.5):
         total_tp_left  += tp_left
         total_tp_right += tp_right
 
-    AP = sum(APs) / len(APs)
-    AR = sum(ARs) / len(ARs)
+        total_fp_left  += fp_left
+        total_fp_right += fp_right
 
-    acc_left  = total_tp_left  / ____
-    acc_right = total_tp_right / ___
+    mP = sum(precisions) / len(precisions)
+    mR = sum(recalls) / len(recalls)
+
+    prec_left  = total_tp_left  / (total_tp_left  + total_fp_left  + 1e-6)
+    prec_right = total_tp_right / (total_tp_right + total_fp_right + 1e-6)
     
     rec_left  = total_tp_left  / (total_gt_left  + 1e-6)
     rec_right = total_tp_right / (total_gt_right + 1e-6)
@@ -195,10 +204,12 @@ def evaluate_images(img_ids, iou_thresh=0.5):
     
     return dict(
         iou_thresh = iou_thresh,
-        AP = AP,
-        AR = AR,
-        rec_left = rec_left,
-        rec_right = rec_right
+        mean_precision = mP,
+        precision_left = prec_left,
+        precision_right = prec_right,
+        mean_recall = mR,
+        recall_left = rec_left,
+        recall_right = rec_right
     )
 
 
