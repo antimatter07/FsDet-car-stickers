@@ -4,7 +4,7 @@
 import json
 import os
 import cv2
-import numpy as np
+import numpy
 import torch
 from PIL import Image
 from fsdet.config import get_cfg
@@ -23,8 +23,9 @@ import fsdet.data.builtin # registers all datasets
 
 # Test the FULL IMAGES
 input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder
-output_folder = "results/test_evaluation/" # output to save processed images
+output_folder = "results/ws_then_cs_10shot/test_predictions/" # output to save json predictions
 dataset_name = "stickers_ws_31shot_1280_test_tinyonly_top4" # registered name of the test dataset
+gt_json = "datasets/stickers/annotations/stickers_ws_31shot_test_1280.json" # only used to convert prediction filenames to image_id
 
 
 #confidence score threshold for each classs
@@ -64,8 +65,8 @@ ws_model, ws_cfg = load_model(
 )
 
 cs_model, cs_cfg = load_model(
-    "configs/stickers-detection/ws_then_cs_31shot.yaml",
-    "results/ws_then_cs_31shot/model_0000299.pth"
+    "configs/stickers-detection/ws_then_cs_10shot.yaml",
+    "results/ws_then_cs_10shot/model_0001799.pth"
 )
 
 
@@ -110,7 +111,19 @@ def prepare_input_for_model(image_bgr, cfg, device):
 
     # Return input dict (model handles normalization internally)
     return {"image": image_tensor.to(device), "height": height, "width": width}
+
+
+# determines the alignment of a sticker prediction
+def get_alignment(ws_box, sticker_box):
+    wx1, wx2, wy1, wy2 = ws_box
+    sx1, sx2, sy1, sy2 = sticker_box
     
+    w_center = (wx1 + wx2) / 2.0
+    s_center = (sx1 + sx2) / 2.0
+
+    return "left" if s_center < w_center else "right"
+
+
 @torch.no_grad()
 def detect_ws_then_cs(image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, metadata, device="cuda"):
     """
@@ -156,12 +169,16 @@ def detect_ws_then_cs(image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, metadata, d
             cs_boxes[:, 0::2] += x1  # shift x1, x2
             cs_boxes[:, 1::2] += y1  # shift y1, y2
 
+            # Determine if sticker is left or right aligned
+            alignments = [get_alignment(b, box.tolist()) for b in cs_boxes.tolist()]
+                
             shifted_instances = Instances(
                 image_size=image_bgr.shape[:2],
                 pred_boxes=Boxes(cs_boxes),
                 scores=cs_instances.scores,
                 pred_classes=cs_instances.pred_classes,
             )
+            shifted_instances.set("alignments", alignments)
             cs_instances_all.append(shifted_instances)
 
     # --- STEP 4: Combine all sticker detections ---
@@ -240,6 +257,19 @@ image_files = [f for f in os.listdir(input_folder) if f.lower().endswith((".jpg"
 print("> Image file count: ", len(image_files))
 print("> Dataset name: ", dataset_name)
 
+
+# Create lookup for filename to image_id
+with open(gt_json) as f:
+    gt = json.load(f)
+
+image_id_lookup = { 
+    image["file_name"] : image["id"] for image in gt["images"]
+}
+
+category_id_lookup = {
+    category["name"] : category["id"] for category in gt["categories"]
+}
+
 predictions = []
 
 for image_filename in image_files:
@@ -254,17 +284,19 @@ for image_filename in image_files:
         boxes = cs_instances.pred_boxes.tensor.cpu().numpy()
         scores = cs_instances.scores.cpu().numpy()
         labels = cs_instances.pred_classes.cpu().numpy()
+        alignments = cs_instances.alignments
         
-        for box, score, label in zip(boxes, scores, labels):
+        for box, score, label, alignment in zip(boxes, scores, labels, alignments):
             x1, y1, x2, y2 = box.tolist()
             width, height = x2 - x1, y2 - y1
-            category_id = int(label)
+            category_id = category_id_lookup["car-sticker"]
 
             predictions.append({
-                "file_name": image_filename,
+                "image_id": image_id_lookup[image_filename],
                 "category_id": category_id,
                 "bbox": [x1, y1, width, height],
-                "score": float(score)
+                "score": float(score),
+                "alignment": alignment
             })
     # visualize_result(image_path, ws_instances, cs_instances)
 

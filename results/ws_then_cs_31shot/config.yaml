@@ -272,7 +272,7 @@ MODEL:
     NUM_CLASSES: 54
   WEIGHTS: checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot_tinyonly_top4classes/model_reset_surgery.pth
 MUTE_HEADER: true
-OUTPUT_DIR: results/ws_then_cs_31shot
+OUTPUT_DIR: results/train_wscs_results
 SEED: -1
 SOLVER:
   AMP:

@@ -43,12 +43,12 @@ import fsdet.data.builtin # registers all datasets
 
 # Test the FULL IMAGES
 input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder
-output_folder = "results/with_missed_detections/test_wscs_2shot_images_with_predictions/" # output to save processed images
+output_folder = "results/with_missed_detections/test_wscs_31shot_images_with_predictions_conf0.05/" # output to save processed images
 dataset_name = "stickers_ws_31shot_1280_test_tinyonly_top4" # registered name of the test dataset
 
 #confidence score threshold for each classs
 WS_SCORE_THRESHOLD = 0.7
-STICKERS_SCORE_THRESHOLD = 0.10
+STICKERS_SCORE_THRESHOLD = 0.05
 
 os.makedirs(output_folder, exist_ok=True)
 torch.cuda.empty_cache()
@@ -106,8 +106,8 @@ ws_model, ws_cfg = load_model(
 )
 
 cs_model, cs_cfg = load_model(
-    "configs/stickers-detection/ws_then_cs_2shot.yaml",
-    "results/ws_then_cs_2shot/model_0001799.pth"
+    "configs/stickers-detection/ws_then_cs_31shot.yaml",
+    "results/ws_then_cs_31shot/model_0000299.pth"
 )
 
 

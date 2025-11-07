@@ -197,7 +197,7 @@ MODEL:
     OUTPUT_LAYER: CosineSimOutputLayers
     POSITIVE_FRACTION: 0.25
     PROPOSAL_APPEND_GT: true
-    SCORE_THRESH_TEST: 0.1
+    SCORE_THRESH_TEST: 0.05
   ROI_KEYPOINT_HEAD:
     CONV_DIMS:
     - 512
@@ -270,9 +270,9 @@ MODEL:
     NAME: SemSegFPNHead
     NORM: GN
     NUM_CLASSES: 54
-  WEIGHTS: results/ws_then_cs_31shot/model_0000299.pth
+  WEIGHTS: checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovelshot_tinyonly_top4classes/model_reset_surgery.pth
 MUTE_HEADER: true
-OUTPUT_DIR: results/ws_then_cs_31shot/eval
+OUTPUT_DIR: results/ws_then_cs_31shot_lrs
 SEED: -1
 SOLVER:
   AMP:
@@ -288,12 +288,12 @@ SOLVER:
   GAMMA: 0.1
   IMS_PER_BATCH: 2
   LR_SCHEDULER_NAME: WarmupMultiStepLR
-  MAX_ITER: 1000
+  MAX_ITER: 2000
   MOMENTUM: 0.9
   NESTEROV: false
   REFERENCE_WORLD_SIZE: 0
   STEPS:
-  - 216000
+  - 300
   WARMUP_FACTOR: 0.001
   WARMUP_ITERS: 10
   WARMUP_METHOD: linear
