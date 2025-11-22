@@ -5,14 +5,16 @@ from collections import defaultdict
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
-pred_json= "results/ws_then_cs_31shot/test_predictions/test_predictions.json"
+# pred_json= "results/ws_then_cs_31shot/test_predictions/test_predictions.json"
+pred_json = "results/stickers_only/2shot/test_predictions/test_predictions.json"
 gt_json = "datasets/stickers/annotations/stickers_ws_31shot_test_1280.json"
 
 cs_category_id = 91
 ws_category_id = 92
 
 # Output file
-output_folder = "results/ws_then_cs_31shot/test_predictions/eval/"
+# output_folder = "results/ws_then_cs_31shot/test_predictions/eval/"
+output_folder = "results/stickers_only/2shot/test_predictions/eval/"
 os.makedirs(output_folder, exist_ok=True)
 output_file = os.path.join(output_folder, "view_eval_results.txt")
 sys.stdout = open(output_file, "w")
@@ -64,11 +66,11 @@ def get_alignment(sticker_box, ws_boxes):
         return "unknown"
 
     # compute relative to chosen windshield
-    wx, wy, ww, wh = best_ws
-    ws_center = wx + ww/2
+    wx1, wy1, wx2, wy2 = best_ws
+    ws_center = wx1 + wx2 / 2
 
-    sx, sy, sw, sh = sticker_box
-    s_center = sx + sw/2
+    sx1, sy1, sx2, sy2 = sticker_box
+    s_center = sx1 + sx2 / 2
 
     return "left" if s_center < ws_center else "right"
 
@@ -213,6 +215,44 @@ def evaluate_images(img_ids, iou_thresh=0.5):
     )
 
 
+def coco_filter_by_alignment(coco_gt, coco_pred, img_ids, desired_side):
+    filtered_gt = {"images": [], "annotations": [], "categories": coco_gt.dataset["categories"]}
+    filtered_pred = []
+
+    ws_gt = load_gt_by_image(ws_category_id)
+
+    idset = set(img_ids)
+    filtered_gt["images"] = [img for img in coco_gt.dataset["images"] if img["id"] in idset]
+
+    # filter GT
+    for ann in coco_gt.dataset["annotations"]:
+        if ann["image_id"] not in idset:
+            continue
+        if ann["category_id"] != cs_category_id:
+            continue
+
+        ws_boxes = ws_gt.get(ann["image_id"], [])
+        side = get_alignment(ann["bbox"], ws_boxes)
+
+        if side == desired_side:
+            filtered_gt["annotations"].append(ann)
+
+    # filter predictions
+    for p in coco_pred.dataset["annotations"]:
+        if p["image_id"] not in idset:
+            continue
+        if p["category_id"] != cs_category_id:
+            continue
+
+        ws_boxes = ws_gt.get(p["image_id"], [])
+        side = get_alignment(p["bbox"], ws_boxes)
+
+        if side == desired_side:
+            filtered_pred.append(p)
+
+    return filtered_gt, filtered_pred
+
+
 
 print("======================= EVALUATION PER VIEW =======================")
 
@@ -224,13 +264,26 @@ for view, img_ids in sorted(view_to_imgids.items()):
     for key, value in res.items():
         print(f"{key}: {value:.3f}")
 
-    print("COCO EVAL: ")
+    print("COCO EVAL COMBINED: ")
     coco_eval = COCOeval(coco_gt, coco_pred, iouType="bbox")
     coco_eval.params.imgIds = img_ids
     coco_eval.params.catIds = [cs_category_id]
+    coco_eval.evaluate(); coco_eval.accumulate(); coco_eval.summarize()
+
+    # print("COCO EVAL LEFT: ")
+    # gt_left, pred_left = coco_filter_by_alignment(coco_gt, coco_pred, img_ids, "left")
+    # coco_gt_left = COCO(); coco_gt_left.dataset = gt_left; coco_gt_left.createIndex()
+    # coco_pred_left = coco_gt_left.loadRes(pred_left)
+    # ev_left = COCOeval(coco_gt_left, coco_pred_left, "bbox")
+    # ev_left.evaluate(); ev_left.accumulate(); ev_left.summarize()
+
+
+    # print("COCO EVAL RIGHT: ")
+    # gt_right, pred_right = coco_filter_by_alignment(coco_gt, coco_pred, img_ids, "right")
+    # coco_gt_right = COCO(); coco_gt_right.dataset = gt_right; coco_gt_right.createIndex()
+    # coco_pred_right = coco_gt_right.loadRes(pred_right)
+    # ev_right = COCOeval(coco_gt_right, coco_pred_right, "bbox")
+    # ev_right.evaluate(); ev_right.accumulate(); ev_right.summarize()
     
-    coco_eval.evaluate()
-    coco_eval.accumulate()
-    coco_eval.summarize()
     print("\n========================================\n")
 

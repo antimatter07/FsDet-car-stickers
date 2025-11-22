@@ -41,21 +41,7 @@ import detectron2.data.transforms as T
 import fsdet.data.builtin # registers all datasets
 
 
-# Test the FULL IMAGES
-input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder
-output_folder = "results/with_missed_detections/test_wscs_31shot_images_with_predictions_conf0.05/" # output to save processed images
-dataset_name = "stickers_ws_31shot_1280_test_tinyonly_top4" # registered name of the test dataset
 
-#confidence score threshold for each classs
-WS_SCORE_THRESHOLD = 0.7
-STICKERS_SCORE_THRESHOLD = 0.05
-
-os.makedirs(output_folder, exist_ok=True)
-torch.cuda.empty_cache()
-
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"  # SET GPU HERE
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print("CURRENT DEVICE: ", device)
 
 # Load FsDet model
 def load_model(config_path, weights_path):
@@ -92,23 +78,6 @@ def load_model(config_path, weights_path):
     model.to(device).eval()
 
     return model, cfg
-
-
-# best ws+stickers config : stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone.yaml
-# Weights for best 31shot: results/ws_then_cs_31shot/model_0000299.pth
-# Weights for best 2shot: results/ws_then_cs_2shot/model_0001799.pth
-# Weights for best 5shot: results/ws_then_cs_5shot/model_0001399.pth
-# weights for best 10shot: results/ws_then_cs_10shot/model_0001799.pth
-
-ws_model, ws_cfg = load_model(
-    "configs/stickers-detection/stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone.yaml",
-    "checkpoints/stickers/stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone/model_final.pth"
-)
-
-cs_model, cs_cfg = load_model(
-    "configs/stickers-detection/ws_then_cs_31shot.yaml",
-    "results/ws_then_cs_31shot/model_0000299.pth"
-)
 
 
 # converts OpenCV image to tensor for GeneralizedRCNN input format
@@ -429,24 +398,61 @@ def clear_output_folder():
         os.makedirs(output_folder)
 
 
-clear_output_folder()
 
-# Get all image files from the folder
-image_files = [f for f in os.listdir(input_folder) if f.lower().endswith((".jpg", ".jpeg"))]
-print("> Image file count: ", len(image_files))
-print("> Dataset name: ", dataset_name)
 
-for image_filename in image_files:
-    image_path = os.path.join(input_folder, image_filename)
-    #image_tensor = preprocess_image(image_path)
-    image_bgr = cv2.imread(image_path)
-    ws_instances, cs_instances = detect_ws_then_cs(
-    image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, MetadataCatalog.get(dataset_name), device=device
+if __name__ == "__main__":
+
+    # Test on full images
+    
+    
+    input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/"
+    output_folder = "results/test_newscript/test_wscs_31shot_images_with_predictions_conf0.05/"
+    dataset_name = "stickers_ws_31shot_1280_test_tinyonly_top4"
+    clear_output_folder()
+
+    WS_SCORE_THRESHOLD = 0.7
+    STICKERS_SCORE_THRESHOLD = 0.05
+
+    os.makedirs(output_folder, exist_ok=True)
+    torch.cuda.empty_cache()
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("CURRENT DEVICE:", device)
+
+    # best windshield model config : stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone.yaml
+    # Weights for best 31shot: results/ws_then_cs_31shot/model_0000299.pth
+    # Weights for best 2shot: results/ws_then_cs_2shot/model_0001799.pth
+    # Weights for best 5shot: results/ws_then_cs_5shot/model_0001399.pth
+    # weights for best 10shot: results/ws_then_cs_10shot/model_0001799.pth
+
+
+    # Load models 
+    ws_model, ws_cfg = load_model(
+        "configs/stickers-detection/stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone.yaml",
+        "checkpoints/stickers/stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone/model_final.pth"
     )
-    visualize_result(image_path, ws_instances, cs_instances, draw_missed_gts=True)
 
+    cs_model, cs_cfg = load_model(
+        "configs/stickers-detection/ws_then_cs_31shot.yaml",
+        "results/ws_then_cs_31shot/model_0000299.pth"
+    )
 
-    #ws_instances, cs_instances = detect_ws_then_cs(image_tensor, ws_model, cs_model, MetadataCatalog.get(dataset_name))
+    clear_output_folder()
 
-    #visualize_result(image_path, ws_instances, cs_instances) 
+    # MAIN LOOP
+    image_files = [f for f in os.listdir(input_folder) if f.lower().endswith((".jpg", ".jpeg"))]
+    print("> Image file count:", len(image_files))
+    print("> Dataset name:", dataset_name)
+
+    for image_filename in image_files:
+        image_path = os.path.join(input_folder, image_filename)
+        image_bgr = cv2.imread(image_path)
+
+        ws_instances, cs_instances = detect_ws_then_cs(
+            image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, MetadataCatalog.get(dataset_name), device=device
+        )
+
+        visualize_result(image_path, ws_instances, cs_instances, draw_missed_gts=True)
+
 

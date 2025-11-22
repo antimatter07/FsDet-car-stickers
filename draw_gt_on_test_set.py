@@ -5,7 +5,7 @@ from detectron2.data import DatasetCatalog, MetadataCatalog
 from detectron2.utils.visualizer import Visualizer
 import cv2
 
-# --- CONFIGURATION ---
+
 dataset_name = "crop_stickers_tinyonly_top4_train_10shot"
 output_folder = "gt_images_with_annotations/10shot_trainset_imageswithannots"
 os.makedirs(output_folder, exist_ok=True)
@@ -22,7 +22,7 @@ for i, data in enumerate(dataset_dicts):
         print(f"[!] Could not read image: {img_path}")
         continue
 
-    # --- Make boxes thicker and more visible ---
+
     vis = Visualizer(
         image[:, :, ::-1],
         metadata=metadata,

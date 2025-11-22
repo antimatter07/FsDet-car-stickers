@@ -1,9 +1,8 @@
 """
 test_drawpreds_stickersonly.py
 
-Visualize sticker detections only (no windshield model).
-Works with Detectron2 v0.4 / FsDet models.
-All bounding boxes have uniform white labels.
+Visualize sticker detections on full image done by FsDet model trained on k-shots of stickers on full image.
+
 """
 
 import os
@@ -20,20 +19,6 @@ from detectron2.data import MetadataCatalog, DatasetCatalog
 import detectron2.data.transforms as T
 
 import fsdet.data.builtin # registers all datasets
-
-
-output_folder = "results/test_10shot_drawpreds_stickersonly/"
-dataset_name = "stickers_10shot_1280_test_tinyonly_top4"
-input_folder = MetadataCatalog.get(dataset_name).image_root
-STICKERS_SCORE_THRESHOLD = 0.00
-IOU_THRESH = 0.5
-
-os.makedirs(output_folder, exist_ok=True)
-torch.cuda.empty_cache()
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print("CURRENT DEVICE:", device)
-
 
 
 def load_model(config_path, weights_path):
@@ -65,25 +50,6 @@ def load_model(config_path, weights_path):
     DetectionCheckpointer(model).load(cfg.MODEL.WEIGHTS)
     model.to(device).eval()
     return model, cfg
-
-
-# For 31-shot
-# configs/stickers-detection/stickers_only_31shot.yaml
-# results/stickers_only/31shot/best/model_0000999.pth
-
-# For 10-shot
-# results/stickers_only/10shot/best/model_0003199.pth
-#  configs/stickers-detection/stickers_only_10shot.yaml
-# For 5-shot
-# results/stickers_only/5shot_bs2/best (iter 1400 highest ap50)/model_0001399.pth
-# configs/stickers-detection/stickers_only_5shot.yaml
-# For 2-shot
-# configs/stickers-detection/stickers_only_2shot.yaml
-#  results/stickers_only/2shot/best/model_0001799.pth
-cs_model, cs_cfg = load_model(
-    "configs/stickers-detection/stickers_only_10shot.yaml",
-    "results/stickers_only/10shot/best/model_0003199.pth"
-)
 
 
 
@@ -263,14 +229,45 @@ def clear_output_folder():
     else:
         os.makedirs(output_folder)
 
+if __name__ == "__main__":
 
-clear_output_folder()
-image_files = [f for f in os.listdir(input_folder) if f.lower().endswith((".jpg", ".jpeg"))]
-print("> Image file count:", len(image_files))
-print("> Dataset name:", dataset_name)
+    output_folder = "results/test_10shot_drawpreds_stickersonly/"
+    dataset_name = "stickers_10shot_1280_test_tinyonly_top4"
+    input_folder = MetadataCatalog.get(dataset_name).image_root
+    STICKERS_SCORE_THRESHOLD = 0.05
+    IOU_THRESH = 0.5
+    
+    os.makedirs(output_folder, exist_ok=True)
+    torch.cuda.empty_cache()
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("CURRENT DEVICE:", device)
 
-for image_filename in image_files:
-    image_path = os.path.join(input_folder, image_filename)
-    image_bgr = cv2.imread(image_path)
-    cs_instances = detect_stickers(image_bgr, cs_model, cs_cfg)
-    visualize_result(image_path, cs_instances, draw_missed_gts=True)
+    clear_output_folder()
+    image_files = [f for f in os.listdir(input_folder) if f.lower().endswith((".jpg", ".jpeg"))]
+    print("> Image file count:", len(image_files))
+    print("> Dataset name:", dataset_name)
+    # For 31-shot
+    # configs/stickers-detection/stickers_only_31shot.yaml
+    # results/stickers_only/31shot/best/model_0000999.pth
+    
+    # For 10-shot
+    # results/stickers_only/10shot/best/model_0003199.pth
+    #  configs/stickers-detection/stickers_only_10shot.yaml
+    # For 5-shot
+    # results/stickers_only/5shot_bs2/best (iter 1400 highest ap50)/model_0001399.pth
+    # configs/stickers-detection/stickers_only_5shot.yaml
+    # For 2-shot
+    # configs/stickers-detection/stickers_only_2shot.yaml
+    #  results/stickers_only/2shot/best/model_0001799.pth
+
+    cs_model, cs_cfg = load_model(
+    "configs/stickers-detection/stickers_only_10shot.yaml",
+    "results/stickers_only/10shot/best/model_0003199.pth"
+)
+    
+    for image_filename in image_files:
+        image_path = os.path.join(input_folder, image_filename)
+        image_bgr = cv2.imread(image_path)
+        cs_instances = detect_stickers(image_bgr, cs_model, cs_cfg)
+        visualize_result(image_path, cs_instances, draw_missed_gts=True)

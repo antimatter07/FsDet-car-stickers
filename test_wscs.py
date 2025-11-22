@@ -23,14 +23,14 @@ import fsdet.data.builtin # registers all datasets
 
 # Test the FULL IMAGES
 input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/" # test image folder
-output_folder = "results/ws_then_cs_10shot/test_predictions/" # output to save json predictions
+output_folder = "results/stickers_only/2shot/test_predictions/" # output to save json predictions
 dataset_name = "stickers_ws_31shot_1280_test_tinyonly_top4" # registered name of the test dataset
 gt_json = "datasets/stickers/annotations/stickers_ws_31shot_test_1280.json" # only used to convert prediction filenames to image_id
 
 
 #confidence score threshold for each classs
 WS_SCORE_THRESHOLD = 0.7
-STICKERS_SCORE_THRESHOLD = 0.0
+STICKERS_SCORE_THRESHOLD = 0.05
 
 os.makedirs(output_folder, exist_ok=True)
 torch.cuda.empty_cache()
@@ -55,7 +55,7 @@ def load_model(config_path, weights_path):
 
 
 # best ws+stickers config : stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone.yaml
-# Weights for best 31shot: fsdet/FsDet-car-stickers/results/ws_then_cs_31shot/model_0000299.pth
+# Weights for best 31shot: results/ws_then_cs_31shot/model_0000299.pth
 # Weights for best 2shot: results/ws_then_cs_2shot/model_0001799.pth
 # Weights for best 5shot: results/ws_then_cs_5shot/model_0001399.pth
 # weights for best 10shot: results/ws_then_cs_10shot/model_0001799.pth
@@ -64,9 +64,14 @@ ws_model, ws_cfg = load_model(
     "checkpoints/stickers/stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone/model_final.pth"
 )
 
+# cs_model, cs_cfg = load_model(
+#     "configs/stickers-detection/ws_then_cs_31shot.yaml",
+#     "results/ws_then_cs_31shot/model_0000299.pth"
+# )
+
 cs_model, cs_cfg = load_model(
-    "configs/stickers-detection/ws_then_cs_10shot.yaml",
-    "results/ws_then_cs_10shot/model_0001799.pth"
+    "configs/stickers-detection/stickers_only_2shot.yaml",
+    "results/stickers_only/2shot/best/model_0001799.pth"
 )
 
 
@@ -115,8 +120,8 @@ def prepare_input_for_model(image_bgr, cfg, device):
 
 # determines the alignment of a sticker prediction
 def get_alignment(ws_box, sticker_box):
-    wx1, wx2, wy1, wy2 = ws_box
-    sx1, sx2, sy1, sy2 = sticker_box
+    wx1, wy1, wx2, wy2 = ws_box
+    sx1, sy1, sx2, sy2 = sticker_box
     
     w_center = (wx1 + wx2) / 2.0
     s_center = (sx1 + sx2) / 2.0
@@ -190,6 +195,58 @@ def detect_ws_then_cs(image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, metadata, d
         cs_instances = create_empty_instances(height, width)
 
     return ws_instances, cs_instances
+
+
+@torch.no_grad()
+def detect_cs_only(image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, metadata, device="cuda"):
+    """
+    1. Run windshield model on the full image (for alignment only).
+    2. Run sticker model on the full image.
+    3. Determine alignment (left/right) based on windshield boxes.
+    """
+
+    H, W = image_bgr.shape[:2]
+
+    # --- STEP 1: Windshield detection (full image) ---
+    ws_inputs = prepare_input_for_model(image_bgr, ws_cfg, device)
+    ws_outputs = ws_model([ws_inputs])[0]
+
+    ws_instances = detector_postprocess(
+        ws_outputs["instances"].to("cpu"), ws_inputs["height"], ws_inputs["width"]
+    )
+
+    # Filter windshields
+    keep = (ws_instances.pred_classes == 5) & (ws_instances.scores >= WS_SCORE_THRESHOLD)
+    ws_instances = ws_instances[keep]
+
+
+    # --- STEP 2: Sticker detection (full frame, no crop) ---
+    cs_inputs = prepare_input_for_model(image_bgr, cs_cfg, device)
+    cs_outputs = cs_model([cs_inputs])[0]
+
+    cs_instances = detector_postprocess(
+        cs_outputs["instances"].to("cpu"), cs_inputs["height"], cs_inputs["width"]
+    )
+
+    keep = (cs_instances.pred_classes == 4) & (cs_instances.scores >= STICKERS_SCORE_THRESHOLD)
+    cs_instances = cs_instances[keep]
+
+    # --- STEP 3: Determine alignment ---
+    num_stickers = len(cs_instances)
+    alignments = []
+    if num_stickers > 0:
+        if len(ws_instances) > 0:
+            ws_box = ws_instances.pred_boxes.tensor[0].tolist()
+
+            sticker_boxes = cs_instances.pred_boxes.tensor.tolist()
+            alignments = [get_alignment(ws_box, sbox) for sbox in sticker_boxes]
+        else:
+            alignments = ["unknown"] * num_stickers
+
+    cs_instances.set("alignments", alignments)
+
+    return cs_instances
+
 
 def clean_instance_fields(instances):
     """
@@ -276,8 +333,11 @@ for image_filename in image_files:
     image_path = os.path.join(input_folder, image_filename)
     image_bgr = cv2.imread(image_path)
     
-    ws_instances, cs_instances = detect_ws_then_cs(
-    image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, MetadataCatalog.get(dataset_name), device=device
+    # ws_instances, cs_instances = detect_ws_then_cs(
+    # image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, MetadataCatalog.get(dataset_name), device=device
+    # )
+    cs_instances = detect_cs_only(
+       image_bgr, ws_model, cs_model, ws_cfg, cs_cfg, MetadataCatalog.get(dataset_name), device=device 
     )
 
     if len(cs_instances) > 0:
