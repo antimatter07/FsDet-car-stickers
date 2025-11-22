@@ -1,6 +1,21 @@
 """
+default_fsd_utils.py
+
+Provides default boilerplate utilities for training and testing in FsDet. 
+
+This includes:
+1. Command-line argument parser for common FsDet training/evaluation scenarios.
+2. Setup logic for logging, environment, and config backup.
+3. DefaultPredictor for simple end-to-end inference.
+4. DefaultTrainer, a fully-featured trainer that wraps model building, 
+   data loading, checkpointing, hooks, and evaluation.
+
+The behavior of the classes and functions is meant to provide common 
+default behavior. It may not be stable for all custom research scenarios, 
+and users are encouraged to override or replace components as needed.
+
 This file contains components with some default boilerplate logic user may need
-in training / testing. They will not work for everyone, but many users may find them useful.
+in training / testing. 
 
 The behavior of functions/classes in this file is subject to change,
 since they are meant to represent the "common default behavior" people need in their projects.
@@ -52,10 +67,11 @@ __all__ = [
 
 def default_argument_parser():
     """
-    Create a parser with some common arguments used by FsDet users.
+    Create a parser with common command-line arguments for FsDet training and evaluation.
 
     Returns:
-        argparse.ArgumentParser:
+        argparse.ArgumentParser: Parser with standard FsDet arguments such as:
+            --config-file, --resume, --eval-only, --num-gpus, --dist-url, --opts, etc.
     """
     parser = argparse.ArgumentParser(description="FsDet Training")
     parser.add_argument(
@@ -132,15 +148,18 @@ def default_argument_parser():
 
 def default_setup(cfg, args):
     """
-    Perform some basic common setups at the beginning of a job, including:
+    Perform common setup for FsDet jobs.
 
-    1. Set up the FsDet logger
-    2. Log basic information about environment, cmdline arguments, and config
-    3. Backup the config to the output directory
+    Includes:
+        1. Logger setup.
+        2. Environment info logging.
+        3. Config backup to output directory.
+        4. RNG seeding per process.
+        5. CuDNN benchmarking (if applicable).
 
     Args:
-        cfg (CfgNode): the full config to be used
-        args (argparse.NameSpace): the command line arguments to be logged
+        cfg (CfgNode): The full Detectron2/FsDet configuration object.
+        args (argparse.Namespace): Command-line arguments.
     """
     output_dir = cfg.OUTPUT_DIR
     if comm.is_main_process() and output_dir:
@@ -189,24 +208,19 @@ def default_setup(cfg, args):
 
 class DefaultPredictor:
     """
-    Create a simple end-to-end predictor with the given config.
-    The predictor takes an BGR image, resizes it to the specified resolution,
-    runs the model and produces a dict of predictions.
+    End-to-end predictor for inference with a single model and config.
 
-    This predictor takes care of model loading and input preprocessing for you.
-    If you'd like to do anything more fancy, please refer to its source code
-    as examples to build and use the model manually.
+    Handles model loading, preprocessing, and input transformation.
 
     Attributes:
-        metadata (Metadata): the metadata of the underlying dataset, obtained from
-            cfg.DATASETS.TEST.
+        cfg (CfgNode): Configuration used for model and preprocessing.
+        model (nn.Module): The loaded Detectron2/FsDet model in eval mode.
+        metadata (Metadata): Dataset metadata for visualization and class names.
 
-    Examples:
-
-    .. code-block:: python
+    Example:
 
         pred = DefaultPredictor(cfg)
-        outputs = pred(inputs)
+        outputs = pred(image)
     """
 
     def __init__(self, cfg):
@@ -252,47 +266,26 @@ class DefaultPredictor:
 
 class DefaultTrainer(SimpleTrainer):
     """
-    A trainer with default training logic. Compared to `SimpleTrainer`, it
-    contains the following logic in addition:
+    Standard trainer for FsDet models.
 
-    1. Create model, optimizer, scheduler, dataloader from the given config.
-    2. Load a checkpoint or `cfg.MODEL.WEIGHTS`, if exists.
-    3. Register a few common hooks.
+    Extends SimpleTrainer by adding:
+        - Model, optimizer, scheduler, dataloader construction from config.
+        - Checkpointing logic.
+        - Default training hooks (timing, PreciseBN, evaluation, logging).
 
-    It is created to simplify the **standard model training workflow** and
-    reduce code boilerplate for users who only need the standard training
-    workflow, with standard features. It means this class makes *many
-    assumptions* about your training logic that may easily become invalid in
-    a new research. In fact, any assumptions beyond those made in the
-    :class:`SimpleTrainer` are too much for research.
-
-    The code of this class has been annotated about restrictive assumptions
-    it mades. When they do not work for you, you're encouraged to:
-
-    1. Overwrite methods of this class, OR:
-    2. Use :class:`SimpleTrainer`, which only does minimal SGD training and
-       nothing else. You can then add your own hooks if needed. OR:
-    3. Write your own training loop similar to `tools/plain_train_net.py`.
-
-    Also note that the behavior of this class, like other functions/classes in
-    this file, is not stable, since it is meant to represent the "common
-    default behavior".
-    It is only guaranteed to work well with the standard models and training
-    workflow in FsDet.
-    To obtain more stable behavior, write your own training logic with other
-    public APIs.
+    Designed for standard training workflows; may not suit custom research logic.
 
     Attributes:
-        scheduler:
-        checkpointer (DetectionCheckpointer):
-        cfg (CfgNode):
+        cfg (CfgNode): Full configuration.
+        scheduler: Learning rate scheduler.
+        checkpointer (DetectionCheckpointer): Checkpointer with optimizer & scheduler.
+        start_iter (int): Iteration to start training from.
+        max_iter (int): Maximum training iterations.
 
-    Examples:
-
-    .. code-block:: python
+    Example:
 
         trainer = DefaultTrainer(cfg)
-        trainer.resume_or_load()  # load last checkpoint or MODEL.WEIGHTS
+        trainer.resume_or_load()
         trainer.train()
     """
 

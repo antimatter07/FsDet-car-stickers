@@ -1,3 +1,26 @@
+"""
+car_sticker_evaluator.py
+
+Evaluation of car sticker detection results using COCO metrics.
+
+This module defines the CarStickerEvaluator class which extends the
+DatasetEvaluator from FsDet/Detectron2. It supports:
+
+Steps:
+    1. Collecting predictions from model outputs.
+    2. Converting predictions to COCO format.
+    3. Mapping predicted categories to original dataset IDs.
+    4. Computing overall and per-class COCO evaluation metrics.
+    5. Saving results and summaries to JSON and text files.
+
+Dependencies:
+    - pycocotools
+    - fvcore
+    - detectron2
+    - torch
+    - fsdet
+"""
+
 import contextlib
 import copy
 import io
@@ -29,6 +52,19 @@ from pycocotools.cocoeval import COCOeval
 from fsdet.evaluation.evaluator import DatasetEvaluator
 
 class CarStickerEvaluator(DatasetEvaluator):
+    """
+    Evaluator for car sticker detection results.
+
+    Converts model outputs to COCO-format predictions and evaluates
+    using COCO metrics (AP, AP50, AP75, etc.). Supports per-class
+    evaluation and optional NMS post-processing.
+
+    Args:
+        dataset_name (str): Name of the dataset to evaluate.
+        cfg (CfgNode): Detectron2/FsDet configuration object.
+        distributed (bool): Whether evaluation is running in distributed mode.
+        output_dir (str, optional): Directory to save predictions and evaluation summaries.
+    """
     def __init__(self, dataset_name, cfg, distributed, output_dir=None):
         self._distributed = distributed
         self._output_dir = output_dir
@@ -46,9 +82,22 @@ class CarStickerEvaluator(DatasetEvaluator):
         self._results = {}
 
     def reset(self):
+        """
+        Reset predictions before processing new inputs.
+
+        Initializes an empty list of predictions.
+        """
         self._predictions = []
 
     def process(self, inputs, outputs):
+        """
+        Process a batch of model outputs and store predictions.
+
+        Args:
+            inputs (list[dict]): List of input dictionaries, each containing "image_id".
+            outputs (list[dict]): List of model outputs corresponding to inputs.
+        """
+        
         for input, output in zip(inputs, outputs):
             prediction = {"image_id": input["image_id"]}
             if "instances" in output:
@@ -82,6 +131,16 @@ class CarStickerEvaluator(DatasetEvaluator):
                     self._logger.debug(f"No pred_boxes or other fields for image {input['image_id']}")
 
     def evaluate(self):
+        """
+        Evaluate collected predictions.
+
+        Handles distributed gathering if necessary, saves predictions,
+        and computes COCO evaluation metrics.
+
+        Returns:
+            dict: Evaluation results including overall and per-class metrics.
+        """
+        
         if self._distributed:
             comm.synchronize()
             self._predictions = comm.gather(self._predictions, dst=0)
@@ -109,7 +168,12 @@ class CarStickerEvaluator(DatasetEvaluator):
         return copy.deepcopy(self._results)
 
     def _eval_predictions(self):
-        self._prepare_annotations()
+        """
+        Evaluate predictions using COCO metrics and prepare result dictionary.
+
+        Returns:
+            OrderedDict: Dictionary containing overall metrics and per-class summaries.
+        """
       
         # self._results.update(ap_result)
         # self._logger.info("Car sticker evaluation results: {}".format(self._results))
@@ -135,6 +199,12 @@ class CarStickerEvaluator(DatasetEvaluator):
         return results
 
     def _prepare_annotations(self):
+        """
+        Convert predictions to COCO format, apply category remapping, and run COCO evaluation.
+
+        Saves overall and per-class evaluation results to text files.
+       
+        """
         gt_annotations = []
         pred_annotations = []
         processed_image_ids = set()  # Maintain a set to store processed image IDs
@@ -234,6 +304,7 @@ class CarStickerEvaluator(DatasetEvaluator):
             f.write(per_class_results)
 
         #Apply non maximum suppression for splice and save json file and eval resuuts
+        #splice no longer used since we are using windshield-to-sticker detection now
         if self.cfg.SPLICE:
             iou_thresh = 0.3
             prediction_path = 'car_sticker_predictions.json'
@@ -317,6 +388,15 @@ def _evaluate_predictions_on_coco(
     return coco_eval
 
 def load_predictions(file_path):
+    """
+    Load predictions from a JSON file.
+
+    Args:
+        file_path (str): Path to JSON file containing predictions.
+
+    Returns:
+        list[dict]: List of predictions loaded from file.
+    """
     with open(file_path, 'r') as f:
         return json.load(f)
 
@@ -357,6 +437,13 @@ def apply_nms(predictions, iou_threshold=0.5):
     return final_predictions
 
 def save_predictions(predictions, output_path):
+    """
+    Save predictions to a JSON file.
+
+    Args:
+        predictions (list[dict]): Predictions to save.
+        output_path (str): Path to the output JSON file.
+    """
     with open(output_path, 'w') as f:
         json.dump(predictions, f, indent=2)
 

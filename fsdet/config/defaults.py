@@ -1,3 +1,17 @@
+"""
+custom_cfg_defaults.py
+
+Extends Detectron2's default configuration (_C) with additional options
+for experiments, including model freezing, ROI head customization,
+cosine similarity scaling, and evaluation settings.
+
+This script defines new default configuration values that can be merged
+into a Detectron2 configuration object for experiments involving few-shot
+detection, cosine similarity classifiers, or custom evaluation settings.
+
+Additional defaults used accross experiments can be defined here.
+"""
+
 from detectron2.config.defaults import _C
 
 # adding additional default values built on top of the default values in detectron2

@@ -1,3 +1,17 @@
+"""
+aggregate_results.py
+
+This script aggregates few-shot object detection results across multiple seeds and checkpoints,
+computes statistics (mean, std, percentiles, confidence intervals), and optionally plots
+cumulative metrics. It supports both PASCAL VOC and COCO datasets, and different model variants
+(e.g., FC or cosine similarity models, with optional unfreezing of feature extractor).
+
+Usage:
+    python aggregate_results.py --shots 1 --seeds 30 --print --plot
+
+
+"""
+
 import argparse
 import json
 import math
@@ -8,6 +22,12 @@ import numpy as np
 
 
 def parse_args():
+    """
+    Parse command-line arguments for aggregating detection results.
+
+    Returns:
+        argparse.Namespace: Parsed command-line arguments.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--shots", type=int, default=1, help="Shots to aggregate over"

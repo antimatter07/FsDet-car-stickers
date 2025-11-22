@@ -1,4 +1,17 @@
-"""Implement the CosineSimOutputLayers and  FastRCNNOutputLayers with FC layers."""
+"""
+fast_rcnn.py
+
+Defines output layers for ROI heads in Fast(er) R-CNN models.
+
+This module provides:
+    - `FastRCNNOutputLayers`: Standard linear layers for classification and bbox regression.
+    - `CosineSimOutputLayers`: Linear layers with cosine-similarity based classification scores.
+    - `FastRCNNOutputs`: Stores predictions, computes losses, and performs inference.
+    - Utility functions for inference (`fast_rcnn_inference`).
+
+All output layers are registered in `ROI_HEADS_OUTPUT_REGISTRY` and can be
+constructed dynamically using `cfg.MODEL.ROI_HEADS.OUTPUT_LAYER`.
+"""
 import logging
 
 import numpy as np
@@ -442,6 +455,16 @@ class CosineSimOutputLayers(nn.Module):
             nn.init.constant_(l.bias, 0)
 
     def forward(self, x):
+        """
+        Forward pass for CosineSim output layers.
+
+        Args:
+            x (Tensor): Input features (N, C, H, W) or (N, C)
+
+        Returns:
+            scores (Tensor): Classification logits computed using cosine similarity
+            proposal_deltas (Tensor): Predicted box deltas
+        """
         if x.dim() > 2:
             x = torch.flatten(x, start_dim=1)
 

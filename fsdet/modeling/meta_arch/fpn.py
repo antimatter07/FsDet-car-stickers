@@ -15,9 +15,28 @@ from detectron2.modeling.backbone.fpn import _assert_strides_are_log2_contiguous
 
 class WeightedFPN(Backbone):
     """
-    FPN with learnable fusion weights for each level:
-    y = α * lateral + β * upsample(top-down)
-    where α, β are learned scalars (per FPN level).
+    Feature Pyramid Network (FPN) with learnable fusion weights per level.
+
+    Implements top-down feature fusion using learnable scalars that weigh lateral
+    and top-down contributions for each pyramid level.
+
+    Args:
+        bottom_up (Backbone): backbone producing features such as res2..res5.
+        in_features (list[str]): backbone features used by FPN (high → low res order).
+        out_channels (int): number of channels in FPN outputs.
+        norm (str): normalization type, "" for no normalization.
+        top_block (nn.Module, optional): optional block to extend FPN (e.g., p6/p7).
+
+    Attributes:
+        lateral_convs (list[nn.Module]): lateral 1x1 convs for each level.
+        output_convs (list[nn.Module]): output 3x3 convs for each level.
+        fuse_weights (nn.ModuleList): learnable α, β weights per level.
+        in_features (tuple[str]): features from bottom-up used in FPN.
+        bottom_up (Backbone): backbone network.
+        top_block (nn.Module, optional): top block to add extra levels.
+        _out_feature_strides (dict[str,int]): stride of each output feature.
+        _out_feature_channels (dict[str,int]): channels of each output feature.
+        _size_divisibility (int): required divisibility for input dimensions.
     """
 
     def __init__(
@@ -88,9 +107,19 @@ class WeightedFPN(Backbone):
 
     @property
     def size_divisibility(self):
+        """Returns required input divisibility."""
         return self._size_divisibility
 
     def forward(self, x):
+        """
+        Forward pass through WeightedFPN.
+
+        Args:
+            x (Tensor): input image tensor (N,C,H,W)
+
+        Returns:
+            dict[str, Tensor]: output features p2..pN
+        """
         bottom_up_features = self.bottom_up(x)
         results = []
         prev_features = self.lateral_convs[0](bottom_up_features[self.in_features[-1]])
@@ -134,11 +163,17 @@ class WeightedFPN(Backbone):
 
 class RefineFPN(Backbone):
     """
-    Standard FPN (additive fusion) with optional refinement conv blocks on low-level
-    pyramid outputs (P2, P3). Keeps final output channel count identical across levels
-    so it's fully compatible with RPN / ROI heads.
-    """
+    Standard FPN with additive fusion and optional refinement conv blocks
+    on low-level pyramid outputs (P2, P3).
 
+    Args:
+        bottom_up (Backbone): backbone producing features like res2..res5
+        in_features (list[str]): backbone features used by FPN (high → low res order)
+        out_channels (int): number of channels in FPN outputs
+        norm (str): normalization type
+        top_block (nn.Module, optional): optional top block (e.g., p6/p7)
+        refine_levels (iterable): pyramid levels to apply refinement conv blocks (default: (2,3))
+    """
     def __init__(self, bottom_up, in_features, out_channels, norm="", top_block=None, refine_levels=(2, 3)):
         """
         Args:
@@ -231,10 +266,13 @@ class RefineFPN(Backbone):
 
     def forward(self, x):
         """
+        Forward pass through RefineFPN.
+
         Args:
-            x (Tensor): image tensor (N,C,H,W) passed to the bottom-up network
+            x (Tensor): input image tensor (N,C,H,W)
+
         Returns:
-            dict[str->Tensor]: mapping p2,p3,... to feature maps (all having out_channels)
+            dict[str, Tensor]: output features p2..pN
         """
         bottom_up_features = self.bottom_up(x)
         results = []
@@ -284,11 +322,17 @@ class RefineFPN(Backbone):
             for name in self._out_features
         }
 
-# -----------------------------
-# 🔹 Small Object Feature Enhancement (SOFE)
-# -----------------------------
+
 class SOFEBlock(nn.Module):
-    """Enhances small-object features using multi-scale convolution branches."""
+    """
+    Small Object Feature Enhancement (SOFE) Block.
+
+    Uses multi-scale convolutions (1x1, 3x3, 5x5) to enhance small-object features.
+
+    Args:
+        in_channels (int): number of input channels
+        out_channels (int): number of output channels
+    """
     def __init__(self, in_channels, out_channels):
         super(SOFEBlock, self).__init__()
         self.branch1 = nn.Conv2d(in_channels, out_channels, kernel_size=1, padding=0)
@@ -300,6 +344,15 @@ class SOFEBlock(nn.Module):
             weight_init.c2_xavier_fill(layer)
 
     def forward(self, x):
+        """
+        Forward pass through SOFE block.
+
+        Args:
+            x (Tensor): input tensor (N,C,H,W)
+
+        Returns:
+            Tensor: enhanced features
+        """
         b1 = self.branch1(x)
         b3 = self.branch3(x)
         b5 = self.branch5(x)
@@ -307,11 +360,17 @@ class SOFEBlock(nn.Module):
         return F.relu(self.fuse(out))
 
 
-# -----------------------------
-# 🔹 CBAM Attention Block
-# -----------------------------
+
 class CBAMBlock(nn.Module):
-    """Convolutional Block Attention Module (Channel + Spatial Attention)."""
+    """
+    Convolutional Block Attention Module (CBAM) implementation
+
+    Applies channel and spatial attention sequentially.
+
+    Args:
+        channels (int): number of input/output channels
+        reduction (int): reduction ratio for channel attention (default 16)
+    """
     def __init__(self, channels, reduction=16):
         super(CBAMBlock, self).__init__()
         # Channel attention
@@ -339,13 +398,10 @@ class CBAMBlock(nn.Module):
         return x * sp_attn
 
 
-# -----------------------------
-# 🔹 FPN with SOFE + CBAM
-# -----------------------------
+
 class SofeCBAMFPN(Backbone):
     """
-    Detectron2-compatible FPN backbone with SOFE + CBAM on *all* lateral levels.
-    Uses standard additive fusion (no α, β weights).
+    Detectron2 FPN backbone with SOFE + CBAM applied to lateral features.
     """
     def __init__(self, bottom_up, in_features, out_channels, norm="", top_block=None):
         super().__init__()
@@ -444,14 +500,12 @@ class SofeCBAMFPN(Backbone):
         }
 
 
-# -----------------------------
-# 🔹 Register Backbone in Detectron2
-# -----------------------------
+
 @BACKBONE_REGISTRY.register()
 def build_resnet_sofe_cbam_fpn(cfg, input_shape):
     """
     Registerable name: "build_resnet_sofe_cbam_fpn"
-    Add this under MODEL.BACKBONE.NAME in config.
+
     """
     bottom_up = build_resnet_backbone(cfg, input_shape)
     in_features = cfg.MODEL.FPN.IN_FEATURES

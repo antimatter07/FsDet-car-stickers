@@ -1,17 +1,10 @@
 """
 Detection Training Script.
 
-This scripts reads a given config file and runs the training or evaluation.
-It is an entry point that is made to train standard models in FsDet.
+This script reads a given configuration file and runs training or evaluation
+for standard models in FsDet.
 
-In order to let one script support training of many models,
-this script contains logic that are specific to these built-in models and
-therefore may not be suitable for your own project.
-For example, your research project perhaps only needs a single "evaluator".
-
-Therefore, we recommend you to use FsDet as an library and take
-this file as an example of how to use the library.
-You may want to write your own script with your datasets and other customizations.
+It is designed to support multiple built-in models and datasets.
 """
 
 import os
@@ -36,18 +29,30 @@ from fsdet.evaluation.stickers_evaluation import CarStickerEvaluator
 class Trainer(DefaultTrainer):
     """
     We use the "DefaultTrainer" which contains a number pre-defined logic for
-    standard training workflow. They may not work for you, especially if you
-    are working on a new research project. In that case you can use the cleaner
-    "SimpleTrainer", or write your own training loop.
+    standard training workflow.
     """
 
     @classmethod
     def build_evaluator(cls, cfg, dataset_name, output_folder=None):
         """
         Create evaluator(s) for a given dataset.
-        This uses the special metadata "evaluator_type" associated with each builtin dataset.
-        For your own dataset, you can simply create an evaluator manually in your
-        script and do not have to worry about the hacky if-else logic here.
+
+        This function uses the metadata field "evaluator_type" associated with
+        each built-in dataset. For custom datasets, you can create an evaluator
+        manually in your script.
+
+        Args:
+            cfg: FsDet/Detectron2 configuration object.
+            dataset_name (str): Name of the dataset to evaluate.
+            output_folder (str, optional): Directory to save evaluation results.
+                Defaults to "<cfg.OUTPUT_DIR>/inference".
+
+        Returns:
+            evaluator: Evaluator object or DatasetEvaluators if multiple evaluators
+                       are returned.
+
+        Raises:
+            NotImplementedError: If no evaluator is available for the dataset.
         """
         if output_folder is None:
             output_folder = os.path.join(cfg.OUTPUT_DIR, "inference")
@@ -77,7 +82,13 @@ class Trainer(DefaultTrainer):
 
 def setup(args):
     """
-    Create configs and perform basic setups.
+    Create configuration object and perform basic setup.
+
+    Args:
+        args: Parsed command line arguments.
+
+    Returns:
+        cfg: Frozen FsDet configuration object.
     """
     cfg = get_cfg()
     cfg.merge_from_file(args.config_file)
@@ -90,6 +101,16 @@ def setup(args):
 
 
 def main(args):
+    """
+    Main entry point for training or evaluation.
+
+    Args:
+        args: Parsed command line arguments.
+
+    Returns:
+        If eval_only is set, returns evaluation results dictionary.
+        Otherwise, returns the result of trainer.train().
+    """
     cfg = setup(args)
 
     if args.eval_only:

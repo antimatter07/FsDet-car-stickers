@@ -1,3 +1,18 @@
+"""
+ckpt_surgery.py
+
+This script performs checkpoint surgery for object detection models. It supports:
+- Removing the final layer of the base detector for fine-tuning on novel classes
+- Appending randomly initialized weights for novel classes
+- Combining base and novel detectors by merging final layer weights
+
+It supports models trained on COCO, LVIS, PASCAL VOC, or custom subsets such as tinyonly
+and car sticker datasets.
+
+Usage:
+    python checkpoint_surgery.py --method combine --src1 path/to/base.ckpt --src2 path/to/novel.ckpt
+
+"""
 import argparse
 import os
 
@@ -5,6 +20,13 @@ import torch
 
 
 def parse_args():
+    """
+    Parse command-line arguments for checkpoint surgery.
+
+    Returns:
+        argparse.Namespace: Parsed arguments containing paths, method, target params,
+                            dataset flags, and save directory.
+    """
     parser = argparse.ArgumentParser()
     # Paths
     parser.add_argument(
@@ -67,16 +89,28 @@ def parse_args():
 
 def ckpt_surgery(args):
     """
-    Either remove the final layer weights for fine-tuning on novel dataset or
-    append randomly initialized weights for the novel classes.
+    Perform checkpoint surgery for removing or initializing novel class weights.
 
-    Note: The base detector for LVIS contains weights for all classes, but only
-    the weights corresponding to base classes are updated during base training
-    (this design choice has no particular reason). Thus, the random
-    initialization step is not really necessary.
+    Args:
+        args (argparse.Namespace): Parsed arguments including source checkpoint, method,
+                                   param names, dataset flags, and save directory.
+
+    Notes:
+        - For LVIS, only base class weights are updated in the base detector.
+        - Random initialization step may not be necessary for LVIS as all weights exist.
     """
 
     def surgery(param_name, is_weight, tar_size, ckpt, ckpt2=None):
+        """
+        Modify a single parameter weight or bias in the checkpoint.
+
+        Args:
+            param_name (str): Name of the parameter (e.g., 'roi_heads.box_predictor.cls_score')
+            is_weight (bool): True for weights, False for bias
+            tar_size (int): Target size for the new parameter
+            ckpt (dict): Main checkpoint dictionary
+            ckpt2 (dict, optional): Secondary checkpoint (unused here)
+        """
         weight_name = param_name + (".weight" if is_weight else ".bias")
         pretrained_weight = ckpt["model"][weight_name]
         prev_cls = pretrained_weight.size(0)
@@ -121,11 +155,23 @@ def ckpt_surgery(args):
 
 def combine_ckpts(args):
     """
-    Combine base detector with novel detector. Feature extractor weights are
-    from the base detector. Only the final layer weights are combined.
+    Combine a base detector checkpoint with a novel detector checkpoint.
+
+    Only final layer weights are merged; feature extractor weights are preserved from the base.
     """
 
     def surgery(param_name, is_weight, tar_size, ckpt, ckpt2=None):
+        """
+        Merge weights from base and novel checkpoints for a given parameter.
+
+        Args:
+            param_name (str): Name of parameter
+            is_weight (bool): True if weight, False if bias
+            tar_size (int): Target size
+            ckpt (dict): Base checkpoint
+            ckpt2 (dict): Novel checkpoint
+        """
+        
         if not is_weight and param_name + ".bias" not in ckpt["model"]:
             return
         weight_name = param_name + (".weight" if is_weight else ".bias")
@@ -173,6 +219,13 @@ def combine_ckpts(args):
 
 
 def surgery_loop(args, surgery):
+    """
+    Load checkpoint(s), perform surgery function, and save new checkpoint.
+
+    Args:
+        args (argparse.Namespace): Parsed arguments
+        surgery (callable): Function performing surgery on a parameter
+    """
     # Load checkpoints
     ckpt = torch.load(args.src1)
     if args.method == "combine":
@@ -217,11 +270,24 @@ def surgery_loop(args, surgery):
 
 
 def save_ckpt(ckpt, save_name):
+    """
+    Save checkpoint dictionary to file.
+
+    Args:
+        ckpt (dict): Checkpoint dictionary
+        save_name (str): File path to save checkpoint
+    """
     torch.save(ckpt, save_name)
     print("save changed ckpt to {}".format(save_name))
 
 
 def reset_ckpt(ckpt):
+    """
+    Remove optimizer, scheduler, and reset iteration counter in checkpoint.
+
+    Args:
+        ckpt (dict): Checkpoint dictionary
+    """
     if "scheduler" in ckpt:
         del ckpt["scheduler"]
     if "optimizer" in ckpt:

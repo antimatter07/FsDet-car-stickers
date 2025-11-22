@@ -5,33 +5,21 @@ from collections import defaultdict
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
-# pred_json= "results/ws_then_cs_31shot/test_predictions/test_predictions.json"
-pred_json = "results/stickers_only/2shot/test_predictions/test_predictions.json"
-gt_json = "datasets/stickers/annotations/stickers_ws_31shot_test_1280.json"
 
 cs_category_id = 91
 ws_category_id = 92
-
-# Output file
-# output_folder = "results/ws_then_cs_31shot/test_predictions/eval/"
-output_folder = "results/stickers_only/2shot/test_predictions/eval/"
-os.makedirs(output_folder, exist_ok=True)
-output_file = os.path.join(output_folder, "view_eval_results.txt")
-sys.stdout = open(output_file, "w")
-
-
-coco_gt = COCO(gt_json)
-coco_pred = coco_gt.loadRes(pred_json)
-
-# Group by view
-view_to_imgids = defaultdict(list)
-for img in coco_gt.dataset["images"]:
-    tags = img.get("extra", {}).get("user_tags", [])
-    view = tags[0] if tags else "_no_tag"
-    view_to_imgids[view].append(img["id"])
-
-
+    
 def compute_iou(box1, box2):
+    """
+    Compute the Intersection over Union (IoU) of two bounding boxes.
+    
+    Args:
+        box1 (list[float]): [x, y, width, height] of the first box.
+        box2 (list[float]): [x, y, width, height] of the second box.
+        
+    Returns:
+        float: IoU value between 0 and 1. Returns 0 if union is zero.
+    """
     x1, y1, w1, h1 = box1
     x2, y2, w2, h2 = box2
 
@@ -50,9 +38,18 @@ def compute_iou(box1, box2):
     return inter / union
 
 
-# determines alignment of a GT sticker
-# assumes that multiple windshields per image is possible
+
 def get_alignment(sticker_box, ws_boxes):
+    """
+    Determine the alignment ('left' or 'right') of a sticker relative to windshields.
+    
+    Args:
+        sticker_box (list[float]): Bounding box of the sticker [x, y, width, height].
+        ws_boxes (list[list[float]]): List of bounding boxes of windshields in the image.
+    
+    Returns:
+        str: "left", "right", or "unknown" if no windshield is found.
+    """
     best_iou = 0
     best_ws = None
 
@@ -77,6 +74,15 @@ def get_alignment(sticker_box, ws_boxes):
 
 # create a lookup of ground truths per image
 def load_gt_by_image(category_id):
+    """
+    Load ground truth boxes and organize them by image ID.
+    
+    Args:
+        category_id (int): COCO category ID to filter annotations.
+    
+    Returns:
+        dict: {image_id: [list of bounding boxes]}
+    """
     with open(gt_json) as f:
         gt = json.load(f)
 
@@ -91,6 +97,15 @@ def load_gt_by_image(category_id):
 
 # create a lookup of predictions per image
 def load_pred_by_image(category_id=cs_category_id):
+    """
+    Load predicted boxes and organize them by image ID, sorted by confidence.
+    
+    Args:
+        category_id (int, optional): COCO category ID to filter predictions. Defaults to cs_category_id.
+    
+    Returns:
+        dict: {image_id: [(bbox, score), ...]} sorted descending by score.
+    """
     with open(pred_json) as f:
         predictions = json.load(f)
 
@@ -109,6 +124,18 @@ def load_pred_by_image(category_id=cs_category_id):
 
 # compare gt and prediction boxes in an image (greedy method)
 def compare_boxes(gt_boxes, pred_boxes, ws_boxes, iou_thresh=0.5):
+    """
+    Compare predicted boxes with ground truth using a greedy IoU matching.
+    
+    Args:
+        gt_boxes (list[list[float]]): List of ground truth bounding boxes.
+        pred_boxes (list[tuple]): List of predicted bounding boxes with scores [(bbox, score)].
+        ws_boxes (list[list[float]]): List of windshield bounding boxes.
+        iou_thresh (float, optional): IoU threshold to count as true positive. Defaults to 0.5.
+    
+    Returns:
+        tuple: tp, fp, fn, tp_left, tp_right, fp_left, fp_right, fn_left, fn_right
+    """
     matched_gt = set()
     tp = 0
     fp = 0
@@ -163,6 +190,17 @@ def compare_boxes(gt_boxes, pred_boxes, ws_boxes, iou_thresh=0.5):
 
 # Evaluate all predictions
 def evaluate_images(img_ids, iou_thresh=0.5):
+    """
+    Evaluate predictions for a list of images and compute precision/recall metrics.
+    
+    Args:
+        img_ids (list[int]): List of COCO image IDs to evaluate.
+        iou_thresh (float, optional): IoU threshold for true positives. Defaults to 0.5.
+    
+    Returns:
+        dict: Contains mean precision, mean recall, and per-side precision/recall.
+    """
+    
     ws_gt = load_gt_by_image(ws_category_id)
     cs_gt = load_gt_by_image(cs_category_id)
     pred = load_pred_by_image()
@@ -216,6 +254,20 @@ def evaluate_images(img_ids, iou_thresh=0.5):
 
 
 def coco_filter_by_alignment(coco_gt, coco_pred, img_ids, desired_side):
+    """
+    Filter COCO ground truth and predictions by alignment ('left' or 'right').
+    
+    Args:
+        coco_gt (COCO): COCO object for ground truth.
+        coco_pred (COCO): COCO object for predictions.
+        img_ids (list[int]): List of image IDs to filter.
+        desired_side (str): "left" or "right".
+    
+    Returns:
+        tuple: (filtered_gt, filtered_pred)
+            filtered_gt: dict with 'images', 'annotations', 'categories'
+            filtered_pred: list of prediction annotations
+    """
     filtered_gt = {"images": [], "annotations": [], "categories": coco_gt.dataset["categories"]}
     filtered_pred = []
 
@@ -254,36 +306,64 @@ def coco_filter_by_alignment(coco_gt, coco_pred, img_ids, desired_side):
 
 
 
-print("======================= EVALUATION PER VIEW =======================")
-
-for view, img_ids in sorted(view_to_imgids.items()):
-    print(f">> Evaluating View: {view} ({len(img_ids)} images)")
-
-    res = evaluate_images(img_ids)
-
-    for key, value in res.items():
-        print(f"{key}: {value:.3f}")
-
-    print("COCO EVAL COMBINED: ")
-    coco_eval = COCOeval(coco_gt, coco_pred, iouType="bbox")
-    coco_eval.params.imgIds = img_ids
-    coco_eval.params.catIds = [cs_category_id]
-    coco_eval.evaluate(); coco_eval.accumulate(); coco_eval.summarize()
-
-    # print("COCO EVAL LEFT: ")
-    # gt_left, pred_left = coco_filter_by_alignment(coco_gt, coco_pred, img_ids, "left")
-    # coco_gt_left = COCO(); coco_gt_left.dataset = gt_left; coco_gt_left.createIndex()
-    # coco_pred_left = coco_gt_left.loadRes(pred_left)
-    # ev_left = COCOeval(coco_gt_left, coco_pred_left, "bbox")
-    # ev_left.evaluate(); ev_left.accumulate(); ev_left.summarize()
 
 
-    # print("COCO EVAL RIGHT: ")
-    # gt_right, pred_right = coco_filter_by_alignment(coco_gt, coco_pred, img_ids, "right")
-    # coco_gt_right = COCO(); coco_gt_right.dataset = gt_right; coco_gt_right.createIndex()
-    # coco_pred_right = coco_gt_right.loadRes(pred_right)
-    # ev_right = COCOeval(coco_gt_right, coco_pred_right, "bbox")
-    # ev_right.evaluate(); ev_right.accumulate(); ev_right.summarize()
+if __name__ == "__main__":
     
-    print("\n========================================\n")
+    # pred_json= "results/ws_then_cs_31shot/test_predictions/test_predictions.json"
+    pred_json = "results/stickers_only/2shot/test_predictions/test_predictions.json"
+    gt_json = "datasets/stickers/annotations/stickers_ws_31shot_test_1280.json"
+    
+    # Output file
+    # output_folder = "results/ws_then_cs_31shot/test_predictions/eval/"
+    output_folder = "results/stickers_only/2shot/test_predictions/eval/"
+    os.makedirs(output_folder, exist_ok=True)
+    output_file = os.path.join(output_folder, "view_eval_results.txt")
+    sys.stdout = open(output_file, "w")
+    
+    
+    coco_gt = COCO(gt_json)
+    coco_pred = coco_gt.loadRes(pred_json)
+    
+    # Group by view
+    view_to_imgids = defaultdict(list)
+
+    
+    for img in coco_gt.dataset["images"]:
+        tags = img.get("extra", {}).get("user_tags", [])
+        view = tags[0] if tags else "_no_tag"
+        view_to_imgids[view].append(img["id"])
+
+    print("======================= EVALUATION PER VIEW =======================")
+
+    for view, img_ids in sorted(view_to_imgids.items()):
+        print(f">> Evaluating View: {view} ({len(img_ids)} images)")
+    
+        res = evaluate_images(img_ids)
+    
+        for key, value in res.items():
+            print(f"{key}: {value:.3f}")
+    
+        print("COCO EVAL COMBINED: ")
+        coco_eval = COCOeval(coco_gt, coco_pred, iouType="bbox")
+        coco_eval.params.imgIds = img_ids
+        coco_eval.params.catIds = [cs_category_id]
+        coco_eval.evaluate(); coco_eval.accumulate(); coco_eval.summarize()
+    
+        # print("COCO EVAL LEFT: ")
+        # gt_left, pred_left = coco_filter_by_alignment(coco_gt, coco_pred, img_ids, "left")
+        # coco_gt_left = COCO(); coco_gt_left.dataset = gt_left; coco_gt_left.createIndex()
+        # coco_pred_left = coco_gt_left.loadRes(pred_left)
+        # ev_left = COCOeval(coco_gt_left, coco_pred_left, "bbox")
+        # ev_left.evaluate(); ev_left.accumulate(); ev_left.summarize()
+    
+    
+        # print("COCO EVAL RIGHT: ")
+        # gt_right, pred_right = coco_filter_by_alignment(coco_gt, coco_pred, img_ids, "right")
+        # coco_gt_right = COCO(); coco_gt_right.dataset = gt_right; coco_gt_right.createIndex()
+        # coco_pred_right = coco_gt_right.loadRes(pred_right)
+        # ev_right = COCOeval(coco_gt_right, coco_pred_right, "bbox")
+        # ev_right.evaluate(); ev_right.accumulate(); ev_right.summarize()
+        
+        print("\n========================================\n")
 

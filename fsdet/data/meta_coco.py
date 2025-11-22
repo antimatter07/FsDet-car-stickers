@@ -1,3 +1,10 @@
+"""
+Utilities for loading COCO-format annotations into Detectron2-format
+dataset_dicts, including support for few-shot splits, base-only splits,
+novel-only splits, and tiny-object filtering for generating tiny only COCO split.
+"""
+
+
 import contextlib
 import io
 import os
@@ -10,9 +17,6 @@ from detectron2.structures import BoxMode
 from fsdet.utils.file_io import PathManager
 from pycocotools.coco import COCO
 
-"""
-This file contains functions to parse COCO-format annotations into dicts in "Detectron2 format".
-"""
 
 
 __all__ = ["register_meta_coco"]
@@ -214,6 +218,30 @@ def load_coco_json(json_file, image_root, metadata, dataset_name):
 
 
 def register_meta_coco(name, metadata, imgdir, annofile):
+    """
+    Register COCO or COCO-style dataset into Detectron2.
+
+    Handles:
+    -Standard COCO dataset  
+    -Base-only / Novel-only splits (dataset_name contains "_base" or "_novel")  
+    -Metadata injection (categories, id mappings, paths, evaluator type)  
+
+    Args:
+        name (str):
+            Dataset name used in DatasetCatalog.
+        metadata (dict):
+            Should contain:
+                - base_classes / novel_classes
+                - *_dataset_id_to_contiguous_id
+                - thing_classes
+        imgdir (str):
+            Directory containing images.
+        annofile (str):
+            Path to annotation JSON.
+
+    Returns:
+        None
+    """
     DatasetCatalog.register(
         name,
         lambda: load_coco_json(annofile, imgdir, metadata, name),

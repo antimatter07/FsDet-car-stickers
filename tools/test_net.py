@@ -1,17 +1,16 @@
 """
 Detection Testing Script.
 
-This scripts reads a given config file and runs the evaluation.
-It is an entry point that is made to evaluate standard models in FsDet.
+This script reads a given configuration file and runs evaluation of standard models in FsDet.
 
-In order to let one script support evaluation of many models,
-this script contains logic that are specific to these built-in models and
-therefore may not be suitable for your own project.
-For example, your research project perhaps only needs a single "evaluator".
+It is designed to handle multiple datasets and checkpoint evaluation workflows, including:
+- Single checkpoint evaluation
+- Evaluation of all checkpoints
+- Continuous evaluation during training
 
-Therefore, we recommend you to use FsDet as an library and take
-this file as an example of how to use the library.
-You may want to write your own script with your datasets and other customizations.
+Note:
+This script contains logic specific to built-in models and datasets in FsDet.
+For custom projects, you may want to write your own script using FsDet as a library.
 """
 
 import json
@@ -47,9 +46,18 @@ class Trainer(DefaultTrainer):
     def build_evaluator(cls, cfg, dataset_name, output_folder=None):
         """
         Create evaluator(s) for a given dataset.
-        This uses the special metadata "evaluator_type" associated with each builtin dataset.
-        For your own dataset, you can simply create an evaluator manually in your
-        script and do not have to worry about the hacky if-else logic here.
+
+        Args:
+            cfg: Detectron2/FsDet config object.
+            dataset_name (str): Name of the dataset to evaluate.
+            output_folder (str, optional): Directory to save evaluation results. Defaults to
+                "<cfg.OUTPUT_DIR>/inference".
+
+        Returns:
+            An evaluator object (or DatasetEvaluators if multiple evaluators are used).
+
+        Raises:
+            NotImplementedError: If no evaluator is available for the dataset.
         """
         if output_folder is None:
             output_folder = os.path.join(cfg.OUTPUT_DIR, "inference")
@@ -77,7 +85,24 @@ class Trainer(DefaultTrainer):
 
 
 class Tester:
+    """
+    Helper class to evaluate multiple checkpoints and track the best-performing model.
+
+    Attributes:
+        cfg: FsDet config object.
+        model: Model instance built using Trainer.build_model.
+        check_pointer: Detectron2 checkpointer for checkpoint loading.
+        best_res: Best evaluation result (highest bbox AP).
+        best_file: Checkpoint corresponding to best_res.
+        all_res: Dictionary containing evaluation results for all evaluated checkpoints.
+    """
     def __init__(self, cfg):
+        """
+        Initialize Tester.
+
+        Args:
+            cfg: FsDet configuration object.
+        """
         self.cfg = cfg
         self.model = Trainer.build_model(cfg)
         self.check_pointer = DetectionCheckpointer(
@@ -89,6 +114,15 @@ class Tester:
         self.all_res = {}
 
     def test(self, ckpt):
+        """
+        Evaluate a given checkpoint.
+
+        Args:
+            ckpt (str): Path to checkpoint file.
+
+        Updates:
+            self.best_res, self.best_file, self.all_res
+        """
         self.check_pointer._load_model(self.check_pointer._load_file(ckpt))
         print("evaluating checkpoint {}".format(ckpt))
         res = Trainer.test(self.cfg, self.model)
@@ -119,7 +153,13 @@ class Tester:
 
 def setup(args):
     """
-    Create configs and perform basic setups.
+    Create configuration object and perform basic setup.
+
+    Args:
+        args: Parsed command line arguments.
+
+    Returns:
+        cfg: Frozen FsDet configuration object.
     """
     cfg = get_cfg()
     cfg.merge_from_file(args.config_file)
@@ -132,6 +172,15 @@ def setup(args):
 
 
 def main(args):
+    """
+    Main evaluation entry point.
+
+    Args:
+        args: Parsed command line arguments.
+
+    Returns:
+        Evaluation results (dictionary) depending on evaluation mode.
+    """
     cfg = setup(args)
     if args.eval_only:
         model = Trainer.build_model(cfg)

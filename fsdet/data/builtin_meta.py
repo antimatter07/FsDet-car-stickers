@@ -547,6 +547,15 @@ CONTIGUOUS_STICKERS_ONLY = {91: 0}
 
 
 def _get_coco_instances_meta():
+    """
+    Get metadata for the standard COCO dataset.
+
+    Returns:
+        dict: A dictionary containing:
+            - "thing_dataset_id_to_contiguous_id" (dict): Mapping from COCO category id to contiguous id [0, 79].
+            - "thing_classes" (list): List of COCO "thing" class names.
+            - "thing_colors" (list): List of RGB colors for each COCO "thing" class.
+    """
     thing_ids = [k["id"] for k in COCO_CATEGORIES if k["isthing"] == 1]
     thing_colors = [k["color"] for k in COCO_CATEGORIES if k["isthing"] == 1]
     assert len(thing_ids) == 80, len(thing_ids)
@@ -562,6 +571,19 @@ def _get_coco_instances_meta():
 
 
 def _get_coco_fewshot_instances_meta():
+    """
+    Get metadata for COCO few-shot dataset.
+
+    Returns:
+        dict: A dictionary containing:
+            - "thing_dataset_id_to_contiguous_id" (dict): Mapping for all COCO "thing" classes.
+            - "thing_classes" (list): List of all COCO "thing" class names.
+            - "thing_colors" (list): List of RGB colors for all COCO "thing" classes.
+            - "novel_dataset_id_to_contiguous_id" (dict): Mapping from novel COCO ids to contiguous ids.
+            - "novel_classes" (list): List of novel class names.
+            - "base_dataset_id_to_contiguous_id" (dict): Mapping from base COCO ids to contiguous ids.
+            - "base_classes" (list): List of base class names.
+    """
     ret = _get_coco_instances_meta()
     novel_ids = [k["id"] for k in COCO_NOVEL_CATEGORIES if k["isthing"] == 1]
     novel_dataset_id_to_contiguous_id = {k: i for i, k in enumerate(novel_ids)}
@@ -586,6 +608,13 @@ def _get_coco_fewshot_instances_meta():
 
 
 def _get_lvis_instances_meta_v0_5():
+    """
+    Get metadata for LVIS v0.5 dataset.
+
+    Returns:
+        dict: A dictionary containing:
+            - "thing_classes" (list): List of all LVIS class names (using first synonym for each category).
+    """
     from .lvis_v0_5_categories import LVIS_CATEGORIES
 
     assert len(LVIS_CATEGORIES) == 1230
@@ -603,6 +632,14 @@ def _get_lvis_instances_meta_v0_5():
 
 
 def _get_lvis_fewshot_instances_meta_v0_5():
+    """
+    Get metadata for LVIS v0.5 few-shot dataset.
+
+    Returns:
+        dict: A dictionary containing:
+            - "thing_classes" (list): List of novel LVIS class names (first synonym).
+            - "class_mapping" (dict): Mapping from full class index to novel class index.
+    """
     from .lvis_v0_5_categories import LVIS_CATEGORIES_NOVEL
 
     all_cats = _get_lvis_instances_meta_v0_5()["thing_classes"]
@@ -617,6 +654,15 @@ def _get_lvis_fewshot_instances_meta_v0_5():
 
 
 def _get_pascal_voc_fewshot_instances_meta():
+    """
+    Get metadata for PASCAL VOC few-shot dataset.
+
+    Returns:
+        dict: A dictionary containing:
+            - "thing_classes" (dict): All PASCAL VOC categories.
+            - "novel_classes" (dict): Few-shot novel categories.
+            - "base_classes" (dict): Base categories.
+    """
     ret = {
         "thing_classes": PASCAL_VOC_ALL_CATEGORIES,
         "novel_classes": PASCAL_VOC_NOVEL_CATEGORIES,
@@ -626,6 +672,19 @@ def _get_pascal_voc_fewshot_instances_meta():
 
 # ADDED GET FUNCTIONS BELOW
 def _get_stickers_novel_instances_meta():
+    """
+    Get metadata for stickers few-shot dataset.
+
+    Returns:
+        dict: A dictionary containing:
+            - "novel_dataset_id_to_contiguous_id" (dict): Mapping from dataset id to contiguous id.
+            - "novel_classes" (list): List of novel sticker classes.
+            - "tinyonly_stickers_id_to_contiguous_id" (dict): Mapping for tiny-only stickers.
+            - "tinyonly_top4_stickers_id_to_contiguous_id" (dict): Mapping for top-4 tiny-only stickers.
+            - "tinyonly_top4_stickers_ws_id_to_contiguous_id" (dict): Mapping for top-4 tiny-only stickers with windshield.
+            - "stickers_ws" (dict): Mapping for stickers + windshield.
+            - "stickers_only" (dict): Mapping for stickers only.
+    """
     ret = {
         "novel_dataset_id_to_contiguous_id": CONTIGUOUS_STICKERS_BASE,  # Assuming only one category with id 1
         "novel_classes": ["car-sticker"],
@@ -638,14 +697,26 @@ def _get_stickers_novel_instances_meta():
     return ret
     
 def _get_tinyonly_novel_instances_meta():
-    #TODO: return contiguous tiny only for tinyonly dataset
+    """
+    Get metadata for tiny-only few-shot dataset.
+
+    Returns:
+        dict: A dictionary containing:
+            - "tinyonly_id_to_contiguous_id" (dict): Mapping from tiny-only dataset ids to contiguous ids.
+    """
     ret = {
         "tinyonly_id_to_contiguous_id": CONTIGUOUS_COCO_TINYONLY,
     }
     return ret
 
 def _get_tinyonly_top4_novel_instances_meta():
-    #TODO: return contiguous tiny only for tinyonly dataset
+    """
+    Get metadata for tiny-only top-4 few-shot dataset.
+
+    Returns:
+        dict: A dictionary containing:
+            - "tinyonly_id_to_contiguous_id" (dict): Mapping from top-4 tiny-only dataset ids to contiguous ids.
+    """
     ret = {
         "tinyonly_id_to_contiguous_id": CONTIGUOUS_COCO_TINYONLY_TOP4,
     }
@@ -653,6 +724,21 @@ def _get_tinyonly_top4_novel_instances_meta():
     
 #ADDED TINYONLY FEWSHOT AND BELOW
 def _get_builtin_metadata(dataset_name):
+    """
+    Retrieve metadata for a built-in dataset by name.
+
+    Args:
+        dataset_name (str): Name of the dataset. Supported values:
+            "coco", "coco_fewshot", "lvis_v0.5", "lvis_v0.5_fewshot",
+            "pascal_voc_fewshot", "stickers_fewshot",
+            "tinyonly_fewshot", "tinyonly_top4_fewshot".
+
+    Returns:
+        dict: Metadata dictionary corresponding to the requested dataset.
+
+    Raises:
+        KeyError: If the dataset_name is not recognized.
+    """
     if dataset_name == "coco":
         return _get_coco_instances_meta()
     elif dataset_name == "coco_fewshot":

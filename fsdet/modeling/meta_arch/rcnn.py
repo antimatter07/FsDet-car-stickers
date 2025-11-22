@@ -24,16 +24,43 @@ from fsdet.modeling.roi_heads import build_roi_heads
 # avoid conflicting with the existing GeneralizedRCNN module in Detectron2
 from .build import META_ARCH_REGISTRY
 
-__all__ = ["GeneralizedRCNN", "ProposalNetwork", "build_dilated_resnet_fpn_backbone"]
+__all__ = ["GeneralizedRCNN", "ProposalNetwork"]
 
 
 @META_ARCH_REGISTRY.register()
 class GeneralizedRCNN(nn.Module):
     """
-    Generalized R-CNN. Any models that contains the following three components:
-    1. Per-image feature extraction (aka backbone)
-    2. Region proposal generation
-    3. Per-region feature extraction and prediction
+    Extended Generalized R-CNN architecture for FsDet.
+
+    This implementation follows the standard Detectron2 two-stage pipeline,
+    consisting of:
+
+        1. Backbone – Extracts per-image convolutional feature maps.
+        2. Proposal Generator (RPN) – Generates region proposals based on backbone features.
+        3. ROI Heads – Performs feature pooling and predicts class logits & bounding boxes.
+
+    This version includes additional capabilities:
+        - Optional freezing of backbone, RPN, or ROI head feature layers.
+        - Unified preprocessing and normalization.
+        - Compatibility with FsDet's custom ROI heads and architectural overrides.
+
+    Args:
+        cfg (CfgNode):
+            A Detectron2-style configuration node. Must provide model,
+            input, and solver settings including PIXEL_MEAN, PIXEL_STD,
+            backbone name, ROI head configuration, and device.
+
+    Attributes:
+        device (torch.device):
+            Device on which the model is executed.
+        backbone (nn.Module):
+            CNN feature extractor module.
+        proposal_generator (nn.Module):
+            Region Proposal Network producing bounding box proposals.
+        roi_heads (nn.Module):
+            ROI heads responsible for classification and bounding box regression.
+        normalizer (callable):
+            Preprocessing function that normalizes images using PIXEL_MEAN/STD.
     """
 
     def __init__(self, cfg):
@@ -145,20 +172,16 @@ class GeneralizedRCNN(nn.Module):
         self, batched_inputs, detected_instances=None, do_postprocess=True
     ):
         """
-        Run inference on the given inputs.
+        Run inference on batched inputs.
 
         Args:
-            batched_inputs (list[dict]): same as in :meth:`forward`
-            detected_instances (None or list[Instances]): if not None, it
-                contains an `Instances` object per image. The `Instances`
-                object contains "pred_boxes" and "pred_classes" which are
-                known boxes in the image.
-                The inference will then skip the detection of bounding boxes,
-                and only predict other per-ROI outputs.
-            do_postprocess (bool): whether to apply post-processing on the outputs.
+            batched_inputs (list[dict]): list of inputs per image.
+            detected_instances (None or list[Instances]): known detections per image. Skip proposal generation if provided.
+            do_postprocess (bool): whether to postprocess outputs to original image resolution.
 
         Returns:
-            same as in :meth:`forward`.
+            list[dict]: results per image, each dict contains:
+                - "instances": predicted Instances object with "pred_boxes", "pred_classes", "scores".
         """
         assert not self.training
 
@@ -198,7 +221,13 @@ class GeneralizedRCNN(nn.Module):
 
     def preprocess_image(self, batched_inputs):
         """
-        Normalize, pad and batch the input images.
+        Normalize, pad, and batch input images.
+
+        Args:
+            batched_inputs (list[dict]): list of dicts with key "image" per image.
+
+        Returns:
+            ImageList: batched images.
         """
         images = [x["image"].to(self.device) for x in batched_inputs]
         images = [self.normalizer(x) for x in images]
@@ -210,6 +239,15 @@ class GeneralizedRCNN(nn.Module):
 
 @META_ARCH_REGISTRY.register()
 class ProposalNetwork(nn.Module):
+    """
+    RPN-only network.
+
+    Implements a backbone + region proposal generator architecture without ROI heads.
+
+    Args:
+        cfg (CfgNode): Detectron2 configuration.
+    """
+    
     def __init__(self, cfg):
         super().__init__()
         self.device = torch.device(cfg.MODEL.DEVICE)
@@ -278,22 +316,22 @@ class ProposalNetwork(nn.Module):
             processed_results.append({"proposals": r})
         return processed_results
 
-@BACKBONE_REGISTRY.register()
-def build_dilated_resnet_fpn_backbone(cfg, input_shape):
+#@BACKBONE_REGISTRY.register()
+#def build_dilated_resnet_fpn_backbone(cfg, input_shape):
     # Load default ResNet FPN backbone
-    backbone = build_resnet_fpn_backbone(cfg, input_shape)
+ #   backbone = build_resnet_fpn_backbone(cfg, input_shape)
     
     # Modify stage 5 (`res5`) to be dilated
-    for bottleneck in backbone.bottom_up.stages[3].children():
-        bottleneck.conv2 = torch.nn.Conv2d(
-            in_channels=bottleneck.conv2.in_channels,
-            out_channels=bottleneck.conv2.out_channels,
-            kernel_size=bottleneck.conv2.kernel_size,
-            stride=1,  # Remove stride
-            padding=2,  # Adjust padding
-            dilation=2,  # Apply dilation
-            bias=(bottleneck.conv2.bias is not None)  # Keep bias if it was present
-        )
+  #  for bottleneck in backbone.bottom_up.stages[3].children():
+   #     bottleneck.conv2 = torch.nn.Conv2d(
+    #        in_channels=bottleneck.conv2.in_channels,
+     #       out_channels=bottleneck.conv2.out_channels,
+      #      kernel_size=bottleneck.conv2.kernel_size,
+     #       stride=1,  # Remove stride
+     #       padding=2,  # Adjust padding
+     #       dilation=2,  # Apply dilation
+     #       bias=(bottleneck.conv2.bias is not None)  # Keep bias if it was present
+     #   )
 
-    return backbone
+    #return backbone
 

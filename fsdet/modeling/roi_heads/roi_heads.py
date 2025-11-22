@@ -1,4 +1,23 @@
-"""Implement ROI_heads."""
+"""
+ROI Heads module for region-based detectors.
+
+This module defines:
+- A registry for available ROI heads
+- Base `ROIHeads` class implementing proposal labeling & sampling logic
+- Specialized ROI heads such as:
+    * `Res5ROIHeads` for C4-style architectures
+    * `StandardROIHeads` for typical FPN/C5 architectures
+
+These heads perform per-region feature extraction and prediction using box heads
+and box predictors registered elsewhere.
+
+- ROIHeads take backbone features and region proposals.
+- During training: proposals are matched to GT, sampled, and passed through ROI heads.
+- During inference: ROI heads output per-instance predictions.
+
+
+"""
+
 # flake8: noqa
 import logging
 from typing import Dict

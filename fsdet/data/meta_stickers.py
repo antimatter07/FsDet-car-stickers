@@ -15,6 +15,28 @@ from fvcore.common.file_io import PathManager
 from pycocotools.coco import COCO
 
 def load_stickers_json(json_file, image_root, metadata, dataset_name):
+    """
+    Load a COCO-format stickers dataset and convert it into Detectron2 dataset_dicts.
+
+    Args:
+        json_file (str): Path to the COCO JSON annotation file.
+        image_root (str): Directory where the images are stored.
+        metadata (dict): Metadata dictionary containing ID mappings and class info.
+        dataset_name (str): Dataset name used to determine which IDMAP rules apply.
+
+    Behavior:
+        - Supports multiple dataset modes like:
+            * `tinyonly`
+            * `top4`
+            * `ws` (with windshield)
+            * `stickers_only`
+        - Automatically selects the correct ID-to-contiguous-ID mapping based on naming.
+        - Converts COCO annotations into Detectron2 records:
+            file_name, height, width, annotations (with bbox + category_id), image_id.
+
+    Returns:
+        list[dict]: A Detectron2 dataset_dict list for training/inference.
+    """
 
     #if tinyonly config, data is loaded differently 
     is_tinyonly = "tinyonly" in dataset_name
@@ -100,6 +122,24 @@ def load_stickers_json(json_file, image_root, metadata, dataset_name):
 # dataset_dicts = DatasetCatalog.get(dataset_name)()
 
 def register_meta_stickers(json_file, image_root, metadata, dataset_name):
+    """
+    Register the stickers dataset into Detectron2’s DatasetCatalog and MetadataCatalog.
+
+    Args:
+        json_file (str): Path to annotations JSON.
+        image_root (str): Path to image folder.
+        metadata (dict): Metadata containing class names, IDMAPs, etc.
+        dataset_name (str): Dataset identifier.
+
+    Behavior:
+        - Step 1: Register dataset loader under DatasetCatalog.
+        - Step 2: Attach metadata (IDMAPs, evaluator type, json paths, etc.)
+        - Used inside config via cfg.DATASETS.TRAIN / TEST.
+
+    The registered dataset can be loaded using:
+        DatasetCatalog.get(dataset_name)
+    """
+    
     # register dataset (step 1)
     DatasetCatalog.register(
         dataset_name, # name of dataset, this will be used in the config file

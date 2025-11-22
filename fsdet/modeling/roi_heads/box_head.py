@@ -1,4 +1,20 @@
-# flake8: noqa
+"""
+box_head.py
+
+Defines ROI box head modules for object detection.
+
+This module provides a registry and implementations for ROI box heads,
+which compute features from per-region inputs and optionally produce
+box predictions. It includes:
+
+- `FastRCNNConvFCHead`: A standard convolution + fully connected head.
+- `ROI_BOX_HEAD_REGISTRY`: Registry for creating box heads dynamically.
+
+The registered box head objects are constructed using:
+    `obj(cfg, input_shape)` 
+where `cfg` is a Detectron2 config object and `input_shape` describes
+the input tensor dimensions.
+"""
 import fvcore.nn.weight_init as weight_init
 import numpy as np
 import torch
@@ -24,10 +40,22 @@ class FastRCNNConvFCHead(nn.Module):
 
     def __init__(self, cfg, input_shape: ShapeSpec):
         """
-        The following attributes are parsed from config:
-            num_conv, num_fc: the number of conv/fc layers
-            conv_dim/fc_dim: the dimension of the conv/fc layers
-            norm: normalization for the conv layers
+        Initialize the FastRCNNConvFCHead.
+
+        Parses configuration to determine the number of conv/fc layers,
+        dimensions, and normalization.
+
+        Args:
+            cfg (CfgNode): Detectron2 configuration object.
+            input_shape (ShapeSpec): Shape of the input tensor, including
+                                     channels, height, and width.
+
+        Attributes:
+            conv_norm_relus (list[nn.Module]): List of convolution layers.
+            fcs (list[nn.Module]): List of fully connected layers.
+            _output_size (int or tuple): Output size of the head, either
+                                         channels x height x width (before FCs)
+                                         or feature dimension (after FCs).
         """
         super().__init__()
 
@@ -79,6 +107,15 @@ class FastRCNNConvFCHead(nn.Module):
             weight_init.c2_xavier_fill(layer)
 
     def forward(self, x):
+        """
+        Forward pass through conv + fc layers.
+
+        Args:
+            x (Tensor): Input tensor of shape (N, C, H, W).
+
+        Returns:
+            Tensor: Output features after all conv and fc layers.
+        """
         for layer in self.conv_norm_relus:
             x = layer(x)
         if len(self.fcs):
@@ -90,12 +127,26 @@ class FastRCNNConvFCHead(nn.Module):
 
     @property
     def output_size(self):
+        """
+        Output size of the head.
+
+        Returns:
+            int or tuple: Number of output channels x height x width (before FC)
+                          or feature dimension (after FC layers).
+        """
         return self._output_size
 
 
 def build_box_head(cfg, input_shape):
     """
-    Build a box head defined by `cfg.MODEL.ROI_BOX_HEAD.NAME`.
+    Build a box head module according to the configuration.
+
+    Args:
+        cfg (CfgNode): Detectron2 configuration object.
+        input_shape (ShapeSpec): Input shape of the ROI features.
+
+    Returns:
+        nn.Module: Instantiated ROI box head.
     """
     name = cfg.MODEL.ROI_BOX_HEAD.NAME
     return ROI_BOX_HEAD_REGISTRY.get(name)(cfg, input_shape)
