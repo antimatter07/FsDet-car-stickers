@@ -192,55 +192,55 @@ pip install ultralytics pycocotools opencv-python pyyaml tqdm
   - COCO_SPLIT and COCO_SPLIT_TEST (for evaluation)
 
 4. Run the pipeline
-Typical flow in the notebook:
-- Train the guide detector on windshields
-- Use guide predictions to crop windshields and build the sticker crop dataset
-- Train the sticker detector
-- Run full two stage inference on the test split
-- Call evaluate_fn to compute AP, AP50, and related metrics
+  Typical flow in the notebook:
+  - Train the guide detector on windshields
+  - Use guide predictions to crop windshields and build the sticker crop dataset
+  - Train the sticker detector
+  - Run full two stage inference on the test split
+  - Call evaluate_fn to compute AP, AP50, and related metrics
 
 5. Inspect visualizations
-The notebook will show sample crops and sample images with ground truth and remapped predictions.
+  The notebook will show sample crops and sample images with ground truth and remapped predictions.
 
 **Option B: Python script (Sample_Usage.py or main.py)**
 
 If you prefer a pure Python workflow without the notebook:
 
 1. Update config.py
-Edit `config.py` so that:
-```
-DATA_YAML = "/path/to/your/windshield/data.yaml"
-COCO_SPLIT = "/path/to/your/COCO/train"
-COCO_SPLIT_TEST = "/path/to/your/COCO/test"
-```
-These are used by YOLODetector and the scheduler to find train and test splits for AP evaluation.
+  Edit `config.py` so that:
+  ```
+  DATA_YAML = "/path/to/your/windshield/data.yaml"
+  COCO_SPLIT = "/path/to/your/COCO/train"
+  COCO_SPLIT_TEST = "/path/to/your/COCO/test"
+  ```
+  These are used by YOLODetector and the scheduler to find train and test splits for AP evaluation.
 
 2. Check the sample script
-`Sample_Usage.py` contains a `main()` function that:
-- Creates two YOLODetector instances, one for the guide (windshield) and one for the sticker detector
-- Builds a GuidedPipeline with:
-  - detector=sticker_model
-  - guide=windshield_model
-  - thresholds and image size
-- Calls pipeline.train(...) for the two stage training
-- Calls pipeline.predict(...) on the test split
-- Evaluates AP50 with evaluate_fn and prints the final AP50 value
+  `Sample_Usage.py` contains a `main()` function that:
+  - Creates two YOLODetector instances, one for the guide (windshield) and one for the sticker detector
+  - Builds a GuidedPipeline with:
+    - detector=sticker_model
+    - guide=windshield_model
+    - thresholds and image size
+  - Calls pipeline.train(...) for the two stage training
+  - Calls pipeline.predict(...) on the test split
+  - Evaluates AP50 with evaluate_fn and prints the final AP50 value
 
 3. Run the script
-From the project root:
-```
-python Sample_Usage.py
-```
-The script will:
-- Train the guide detector on the windshield dataset
-- Build the sticker crop dataset from predicted windshields
-- Train the sticker detector on the cropped patches
-- Run the full two stage pipeline on the test split
-- Compute AP50 with evaluate_fn and print the result
+  From the project root:
+  ```
+  python Sample_Usage.py
+  ```
+  The script will:
+  - Train the guide detector on the windshield dataset
+  - Build the sticker crop dataset from predicted windshields
+  - Train the sticker detector on the cropped patches
+  - Run the full two stage pipeline on the test split
+  - Compute AP50 with evaluate_fn and print the result
 
 4. Tuning and extensions
-In `Sample_Usage.py` you can tweak:
-- pretrained weights for both detectors
-- conf, iou, and input_size in the `GuidedPipeline` constructor
-- epochs for guide and sticker inside `pipeline.train`
-- `scheduled_epochs` if you want specific learning rate steps together with the AP50 scheduler
+  In `Sample_Usage.py` you can tweak:
+  - pretrained weights for both detectors
+  - conf, iou, and input_size in the `GuidedPipeline` constructor
+  - epochs for guide and sticker inside `pipeline.train`
+  - `scheduled_epochs` if you want specific learning rate steps together with the AP50 scheduler
