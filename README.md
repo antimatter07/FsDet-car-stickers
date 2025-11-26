@@ -23,7 +23,7 @@ Each model family has its own **`README`** in the repository:
 *These contain links to their trained weights, detailed setup, and usage guide.*
 ---
 ## The Dataset
-The `Car Sticker Dataset` composes of car images with their windshields visible. There are four different views for each car.
+A `Car Sticker Dataset` was made through crowdsourcing for this study. This serves as the data for training and testing the models. The dataset composes of car images with their windshields visible. There are four different views for each car.
 1. Near Front View
 2. Far Front View
 3. 3/4 Right View
