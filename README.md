@@ -1,5 +1,5 @@
 # Windshield-to-Sticker Detection (WiSDet)
-This repository contains the code used in the study **Few Shot Car Sticker Detection.** This study focuses on detecting tiny car stickers on images of cars with few annotated examples.
+This repository contains the code used in the study **Few Shot Car Sticker Detection.** This study focuses on detecting tiny car stickers on images of cars with few annotated examples. A car sticker dataset was created through crowsourcing and this dataset serves as the training and testing data of this project.
 
 A two stage guided detection pipeline called **WiSDet (Windshield-to-Sticker Detection)**, is proposed for detecting car stickers on windshields. This pipeline first detects windshields then focuses sticker detection within the region.
 
@@ -21,6 +21,45 @@ Each model family has its own **`README`** in the repository:
 1. [FsDet](FsDet/README.md)
 2. [YOLOv8](YOLOv8/README.md)<br/>  
 *These contain links to their trained weights, detailed setup, and usage guide.*
+---
+## The Dataset
+A `Car Sticker Dataset` was made through crowdsourcing for this study. This serves as the data for training and testing the models. The dataset composes of car images with their windshields visible. There are four different views for each car.
+1. Near Front View
+2. Far Front View
+3. 3/4 Right View
+4. 3/4 Left View
+
+To illustrate, the image below shows samples of each viewpoint.
+![Sample_Viewpoint](assets/Sample_Dataset_Views.png)
+
+Both windshields and car stickers are annotated with bounding boxes. All visible windshields and all visible stickers in every image are labeled. Below are sample annotations of the car stickers and windshields.
+
+<p align="center">
+  <img src="assets/Sample_Sticker_Annotations.png" width="40%">
+  <img src="assets/Sample_Windshield_Annotations.png" width="45%">
+</p>
+
+
+There are **312 images**, representing **78 unique cars**, with **1134 annotated stickers** and **347 annotated windshields** in total.
+
+The dataset is organized into several K-shot configurations to support few shot experiments. Each configuration uses the same testing split and varies only in how many sticker instances are available during training.
+
+| Dataset | Train Images | Train Windshields | Train Stickers | Test Images | Test Windshields | Test Stickers |
+| ------- | ------------ | ----------------- | -------------- | ----------- | ---------------- | ------------- |
+| 31-Shot | 12           | 12                | 31             | 300         | 335              | 1103          |
+| 10-Shot | 2            | 3                 | 10             | 310         | 344              | 1124          |
+| 5-Shot  | 1            | 1                 | 5              | 311         | 346              | 1129          |
+| 2-Shot  | 1            | 1                 | 2              | 311         | 346              | 1132          |
+
+
+Below are more samples of the dataset.
+
+![Sample_dataset](assets/Sample_Dataset_Images.png)
+
+*These images are from the training data of the 31-shot dataset.*
+
+
+
 ---
 ## FsDet Overview
 
