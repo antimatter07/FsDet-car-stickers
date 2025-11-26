@@ -29,8 +29,40 @@ These contain links to their trained weights, configuration files, detailed setu
 ## YOLOv8 Overview
 ![YOLOv8 Architecture](assets/YOLO_diagram.png)
 
+- **Backbone**  
+  The backbone extracts multi scale feature maps from the input image.  
+  It uses convolutional blocks with skip connections (C2f blocks in Ultralytics YOLOv8) to capture both local detail and high level semantics.
 
+- **Neck**  
+  The neck builds a feature pyramid by repeatedly **upsampling** and **concatenating** feature maps from different stages. 
+  This combines low level spatial detail from shallow layers with rich semantic information from deeper layers, which is important for tiny sticker targets.
 
+- **Detection Head**  
+  The head predicts bounding boxes and class scores at three scales (P3, P4, P5).  
+  These multi scale predictions allow the model to detect objects of different sizes, with the finest scale focused on small objects like windshield stickers.
+
+In this work we fine tuned **YOLOv8n** and **YOLOv8l**.  
+Both share the same architecture. The *n* model is narrow and shallow, which is faster but less accurate, while the *l* model is wider and deeper, which improves accuracy at a higher computational cost.
+
+### Training configuration
+
+All YOLOv8 models used the same fine tuning configuration, except for weight decay which differs by model size.  
+Other settings follow the Ultralytics YOLOv8 defaults.
+
+| Hyperparameter | Value                               |
+| ------------- | ------------------------------------ |
+| Learning rate | 0.001                                |
+| Optimizer     | SGD                                  |
+| Freeze        | 10 backbone layers at the start      |
+| Momentum      | 0.95                                 |
+| Weight decay  | 0.00001 for `YOLOv8n`; 0.0005 for `YOLOv8l` |
+| LR scheduler  | MultiStepLR                          |
+- The **freeze** setting keeps the first 10 backbone layers fixed at the start of training.  
+  This preserves generic features from pre training and is helpful in the few shot setup.  
+- **Momentum** and **weight decay** follow common YOLO practices, with slightly stronger regularization for the larger *l* model.  
+- The **MultiStepLR** scheduler reduces the learning rate at predefined epochs, which stabilizes training and improves final AP.
+
+For a detailed setup, refer to the [YOLOv8 README](YOLOv8/README.md) file.
 ---
 ## Summary of Results
 ### Initial Models AP@50 Performance
