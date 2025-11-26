@@ -20,7 +20,7 @@ The study has two implementations of WiSDet, one using [FsDet](https://github.co
 Each model family has its own **`README`** in the repository:
 1. [FsDet](FsDet/README.md)
 2. [YOLOv8](YOLOv8/README.md)<br/>  
-These contain links to their trained weights, configuration files, detailed setup, and usage.
+*These contain links to their trained weights, detailed setup, and usage guide.*
 ---
 ## FsDet Overview
 
@@ -61,8 +61,7 @@ Other settings follow the Ultralytics YOLOv8 defaults.
   This preserves generic features from pre training and is helpful in the few shot setup.  
 - **Momentum** and **weight decay** follow common YOLO practices, with slightly stronger regularization for the larger *l* model.  
 - The **MultiStepLR** scheduler reduces the learning rate at predefined epochs, which stabilizes training and improves final AP.
-
-For a detailed setup, refer to the [YOLOv8 README](YOLOv8/README.md) file.
+*For a detailed setup and usage guide, refer to the [YOLOv8 README](YOLOv8/README.md) file.*
 ---
 ## Summary of Results
 ### Initial Models AP@50 Performance
@@ -72,6 +71,10 @@ For a detailed setup, refer to the [YOLOv8 README](YOLOv8/README.md) file.
 | YOLOv8l          | **0.4330** | **0.3839** | **0.3229** | **0.2874** |
 | FsDet            |     0.2892 |     0.1407 |     0.1839 |     0.1773 |
 
+- The larger `YOLOv8l` model is the strongest baseline across all shot settings.  
+- `FsDet` is the middle ground when it comes to performance but has a drop on 10-shot.  
+- `YOLOv8n` has the lowest AP but is the lightest model, useful as a speed oriented baseline.
+
 ### Models with WiSDet AP@50 Performance
 | Model            |    31 shot |    10 shot |     5 shot |     2 shot |
 | ---------------- | ---------: | ---------: | ---------: | ---------: |
@@ -79,9 +82,18 @@ For a detailed setup, refer to the [YOLOv8 README](YOLOv8/README.md) file.
 | YOLOv8l + WiSDet |     0.4937 | **0.4200** |     0.3397 |     0.3049 |
 | FsDet + WiSDet   | **0.5050** |     0.3180 | **0.3400** | **0.3320** |
 
+- Adding WiSDet gives clear AP gains for every backbone and shot count.  
+- FsDet + WiSDet reaches the highest AP at 31, 5, and 2 shot, while YOLOv8l + WiSDet is best at 10 shot.  
+- The gains are largest in the few shot settings, which shows that guiding the detector with the windshield region helps when data is scarce.
+
+
 ### Windshield Detector AP@50 Performance
 | Model   | AP@50 (windshield) |
 | ------- | -----------------: |
 | YOLOv8n |             0.8061 |
 | YOLOv8l |             0.8770 |
 | FsDet   |             0.9010 |
+- Guide detectors were trained on the 31-shot dataset.
+- All guide detectors exceed 0.80 AP@50 on windshields, so the crop regions are reliable.  
+- FsDet gives the most accurate windshield boxes, followed closely by YOLOv8l.  
+- These strong windshield results support WiSDet, since sticker detection depends on good crops.
