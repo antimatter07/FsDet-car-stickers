@@ -19,7 +19,7 @@ The study has two implementations of WiSDet, one using [FsDet](https://github.co
 
 Each model family has its own **`README`** in the repository:
 1. [FsDet](FsDet/README.md)
-2. [YOLOv8](YOLOv8/README.md)
+2. [YOLOv8](YOLOv8/README.md)<br/>  
 These contain links to their trained weights, configuration files, detailed setup, and usage.
 ---
 ## FsDet Overview
@@ -27,6 +27,8 @@ These contain links to their trained weights, configuration files, detailed setu
 
 ---
 ## YOLOv8 Overview
+![YOLOv8 Architecture](assets/YOLO_diagram.png)
+
 
 
 ---
