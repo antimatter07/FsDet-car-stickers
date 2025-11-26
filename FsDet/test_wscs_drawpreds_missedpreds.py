@@ -406,7 +406,7 @@ if __name__ == "__main__":
     
     
     input_folder = "datasets/stickers/stickers_ws_test_31shot_1280/"
-    output_folder = "results/test_newscript/test_wscs_31shot_images_with_predictions_conf0.05/"
+    output_folder = "results/test_newfoldermove/"
     dataset_name = "stickers_ws_31shot_1280_test_tinyonly_top4"
     clear_output_folder()
 
@@ -416,7 +416,7 @@ if __name__ == "__main__":
     os.makedirs(output_folder, exist_ok=True)
     torch.cuda.empty_cache()
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("CURRENT DEVICE:", device)
 
@@ -430,7 +430,7 @@ if __name__ == "__main__":
     # Load models 
     ws_model, ws_cfg = load_model(
         "configs/stickers-detection/stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone.yaml",
-        "checkpoints/stickers/stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone/model_final.pth"
+        "../checkpoints/stickers/stickers_ws_31shot_tinyonly_top4_8_random_all_3000iters_lr001_unfreeze_r-nms_fbackbone/model_final.pth"
     )
 
     cs_model, cs_cfg = load_model(
