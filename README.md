@@ -63,7 +63,7 @@ Below are more samples of the dataset.
 ---
 ## FsDet Overview
 ![FsDet Architecture](assets/fewshot_training_diagram.png)
-
+The model is a standard two-stage object detector, Faster-RCNN with a ResNet-101 FPN backbone. During few-shot fine tuning, the model is trained on target novel classes (i.e., windshield, sticker).
 ---
 ## YOLOv8 Overview
 ![YOLOv8 Architecture](assets/YOLO_diagram.png)
