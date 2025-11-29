@@ -1,8 +1,8 @@
 # Few-Shot Object Detection (FsDet)
 
-This repository contains the implementation of FsDet for Few-Shot Car Sticker Detection experiments. The code base was built upon contains the official few-shot object detection implementation of the ICML 2020 paper
+This repository contains the implementation of FsDet for Few-Shot Car Sticker Detection experiments. The code base was built upon the official few-shot object detection implementation of the ICML 2020 paper
 [Frustratingly Simple Few-Shot Object Detection](https://arxiv.org/abs/2003.06957).
-![TFA Figure](https://user-images.githubusercontent.com/7898443/76520006-698cc200-6438-11ea-864f-fd30b3d50cea.png)
+![FsDet Architecture](../assets/fewshot_training_diagram.png)
 
 
 
