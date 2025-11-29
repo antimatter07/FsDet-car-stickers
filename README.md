@@ -83,6 +83,9 @@ Below are more samples of the dataset.
 In this work we fine tuned **YOLOv8n** and **YOLOv8l**.  
 Both share the same architecture. The *n* model is narrow and shallow, which is faster but less accurate, while the *l* model is wider and deeper, which improves accuracy at a higher computational cost.
 
+## FsDet Overview
+![FsDet Architecture](assets/few-shot_training_diagram.png)
+
 ### Training configuration
 
 All YOLOv8 models used the same fine tuning configuration, except for weight decay which differs by model size.  
