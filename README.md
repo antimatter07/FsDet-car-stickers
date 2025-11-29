@@ -119,8 +119,8 @@ Other settings follow the Ultralytics YOLOv8 defaults.
 ### Models with WiSDet AP@50 Performance
 | Model            |    31 shot |    10 shot |     5 shot |     2 shot | Weights |
 | ---------------- | ---------: | ---------: | ---------: | ---------: | ---------: |
-| YOLOv8n + WiSDet |     0.4014 |     0.3350 |     0.3108 |     0.3147 | [GDrive]() |
-| YOLOv8l + WiSDet |     0.4937 | **0.4200** |     0.3397 |     0.3049 | [GDrive]()  |
+| YOLOv8n + WiSDet |     0.4014 |     0.3350 |     0.3108 |     0.3147 | [GDrive](https://drive.google.com/drive/folders/1Y6ThiwV1EfTs1aBYQnqEIIXI0De6lbSK?usp=sharing) |
+| YOLOv8l + WiSDet |     0.4937 | **0.4200** |     0.3397 |     0.3049 | [GDrive](https://drive.google.com/drive/folders/1L58pdhWYxqOMRiwVl091RQnSh4R_Vo-I?usp=sharing)  |
 | FsDet + WiSDet   | **0.5050** |     0.3180 | **0.3400** | **0.3320** | [GDrive](https://drive.google.com/drive/folders/1jvblA6Q2hafO_orcLZnCYj0F2jpHAd0s?usp=sharing) |
 
 - Adding WiSDet gives clear AP gains for every backbone and shot count.  
