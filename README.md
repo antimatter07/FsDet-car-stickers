@@ -108,7 +108,7 @@ Other settings follow the Ultralytics YOLOv8 defaults.
 ### Initial Models AP@50 Performance
 | Model            |    31 shot |    10 shot |     5 shot |     2 shot |   Weights   |
 | ---------------- | ---------: | ---------: | ---------: | ---------: |  ---------: |
-| YOLOv8n          |     0.2524 |     0.1670 |     0.1551 |     0.1539 |  GDrive     |
+| YOLOv8n          |     0.2524 |     0.1670 |     0.1551 |     0.1539 |  (GDrive)[https://drive.google.com/drive/folders/14EyJRY1J5UsKwa6_P-0hyavH3BSIRO5t?usp=sharing]     |
 | YOLOv8l          | **0.4330** | **0.3839** | **0.3229** | **0.2874** |  GDrive     |
 | FsDet            |     0.2892 |     0.1407 |     0.1839 |     0.1773 |  GDrive     |
 
