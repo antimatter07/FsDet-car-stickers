@@ -4,23 +4,7 @@ This repository contains the implementation of FsDet for Few-Shot Car Sticker De
 [Frustratingly Simple Few-Shot Object Detection](https://arxiv.org/abs/2003.06957).
 ![TFA Figure](https://user-images.githubusercontent.com/7898443/76520006-698cc200-6438-11ea-864f-fd30b3d50cea.png)
 
-In addition to the benchmarks used by previous works, we introduce new benchmarks on three datasets: PASCAL VOC, COCO, and LVIS. We sample multiple groups of few-shot training examples for multiple runs of the experiments and report evaluation results on both the base classes and the novel classes. These are described in more detail in [Data Preparation](#data-preparation).
 
-We also provide benchmark results and pre-trained models for our two-stage fine-tuning approach (TFA). In TFA, we first train the entire object detector on the data-abundant base classes, and then only fine-tune the last layers of the detector on a small balanced training set. See [Models](#models) for our provided models and [Getting Started](#getting-started) for instructions on training and evaluation.
-
-FsDet is well-modularized so you can easily add your own datasets and models. The goal of this repository is to provide a general framework for few-shot object detection that can be used for future research.
-
-If you find this repository useful for your publications, please consider citing our paper.
-
-```angular2html
-@article{wang2020few,
-    title={Frustratingly Simple Few-Shot Object Detection},
-    author={Wang, Xin and Huang, Thomas E. and  Darrell, Trevor and Gonzalez, Joseph E and Yu, Fisher}
-    booktitle = {International Conference on Machine Learning (ICML)},
-    month = {July},
-    year = {2020}
-}
-```
 
 
 ## Installation
@@ -97,6 +81,7 @@ python3 -m tools.ckpt_surgery --src1 checkpoints/base/coco/model_final.pth --met
 ```
 Please make sure src1 arg is the path to base trained weights you would like to use, and create a custom script for correctly mapping classes in `tools.ckpt_surgery.py` for your use case. In our experiments, base trained weights are weights base trained on COCO by original FsDet researchers found here.
 
+## Windshield-to-Sticker Detection (WiSDet)
 To run WiSDet pipeline or inference on full-image similar to built-in evaluation .py file,
 ```
 python test_wscs_args.py \
@@ -111,18 +96,7 @@ python test_wscs_args.py \
     --cs-score-thresh 0.05
 ```
 
-Argument	Description
---mode	ws-cs (pipeline) or cs-only (full-image detection)
---ws-config	YAML config for windshield model
---ws-weights	.pth weights for windshield model
---cs-config	YAML config for sticker model
---cs-weights	.pth weights for sticker model
---input-folder	Folder containing test images
---output-folder	Where JSON & visualizations will be saved
---gt-json	COCO JSON (used for image_id lookup)
---dataset-name	Detectron2 registry name (optional)
---ws-score-thresh	Score threshold for windshield
---cs-score-thresh	Score threshold for stickers
+
 
 # Command-Line Arguments
 
@@ -135,7 +109,6 @@ Argument	Description
 | `--cs-weights` | `.pth` weights for sticker model |
 | `--input-folder` | Folder containing test images |
 | `--output-folder` | Where JSON & visualizations will be saved |
-| `--gt-json` | COCO JSON (used for image_id lookup) |
 | `--dataset-name` | Detectron2 registry name (optional) |
 | `--ws-score-thresh` | Score threshold for windshield |
 | `--cs-score-thresh` | Score threshold for stickers |
