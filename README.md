@@ -108,8 +108,8 @@ Other settings follow the Ultralytics YOLOv8 defaults.
 ### Initial Models AP@50 Performance
 | Model            |    31 shot |    10 shot |     5 shot |     2 shot |   Weights   |
 | ---------------- | ---------: | ---------: | ---------: | ---------: |  ---------: |
-| YOLOv8n          |     0.2524 |     0.1670 |     0.1551 |     0.1539 |  GDrive   |
-| YOLOv8l          | **0.4330** | **0.3839** | **0.3229** | **0.2874** |  GDrive     |
+| YOLOv8n          |     0.2524 |     0.1670 |     0.1551 |     0.1539 |  [GDrive](https://drive.google.com/drive/folders/1zdaSyYglIue5reBu41nDx_9-rQf1p3Bv?usp=sharing)   |
+| YOLOv8l          | **0.4330** | **0.3839** | **0.3229** | **0.2874** |  [GDrive](https://drive.google.com/drive/folders/1eT3_b71ahGVj2RikJOmkUmamDl6mlNxT?usp=sharing)     |
 | FsDet            |     0.2892 |     0.1407 |     0.1839 |     0.1773 |  [GDrive](https://drive.google.com/drive/folders/14EyJRY1J5UsKwa6_P-0hyavH3BSIRO5t?usp=sharing)     |
 
 - The larger `YOLOv8l` model is the strongest baseline across all shot settings.  
@@ -119,8 +119,8 @@ Other settings follow the Ultralytics YOLOv8 defaults.
 ### Models with WiSDet AP@50 Performance
 | Model            |    31 shot |    10 shot |     5 shot |     2 shot | Weights |
 | ---------------- | ---------: | ---------: | ---------: | ---------: | ---------: |
-| YOLOv8n + WiSDet |     0.4014 |     0.3350 |     0.3108 |     0.3147 | GDrive |
-| YOLOv8l + WiSDet |     0.4937 | **0.4200** |     0.3397 |     0.3049 | GDrive  |
+| YOLOv8n + WiSDet |     0.4014 |     0.3350 |     0.3108 |     0.3147 | [GDrive]() |
+| YOLOv8l + WiSDet |     0.4937 | **0.4200** |     0.3397 |     0.3049 | [GDrive]()  |
 | FsDet + WiSDet   | **0.5050** |     0.3180 | **0.3400** | **0.3320** | [GDrive](https://drive.google.com/drive/folders/1jvblA6Q2hafO_orcLZnCYj0F2jpHAd0s?usp=sharing) |
 
 - Adding WiSDet gives clear AP gains for every backbone and shot count.  
@@ -131,8 +131,8 @@ Other settings follow the Ultralytics YOLOv8 defaults.
 ### Windshield Detector AP@50 Performance
 | Model   | AP@50 (windshield) | Weights |
 | ------- | -----------------: | -------: | 
-| YOLOv8n |             0.8061 | GDrive  |
-| YOLOv8l |             0.8770 | GDrive |
+| YOLOv8n |             0.8061 | [GDrive](https://drive.google.com/drive/folders/1Y6ThiwV1EfTs1aBYQnqEIIXI0De6lbSK?usp=sharing)  |
+| YOLOv8l |             0.8770 | [GDrive](https://drive.google.com/drive/folders/1L58pdhWYxqOMRiwVl091RQnSh4R_Vo-I?usp=sharing) |
 | FsDet   |             0.9010 | [GDrive](https://drive.google.com/drive/folders/1pPbuBOHWn4XN473DeUA5Q0cwrGTXy4ix?usp=sharing) |
 - Guide detectors were trained on the 31-shot dataset.
 - All guide detectors exceed 0.80 AP@50 on windshields, so the crop regions are reliable.  
