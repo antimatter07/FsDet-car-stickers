@@ -117,11 +117,11 @@ Other settings follow the Ultralytics YOLOv8 defaults.
 - `YOLOv8n` has the lowest AP but is the lightest model, useful as a speed oriented baseline.
 
 ### Models with WiSDet AP@50 Performance
-| Model            |    31 shot |    10 shot |     5 shot |     2 shot |
-| ---------------- | ---------: | ---------: | ---------: | ---------: |
-| YOLOv8n + WiSDet |     0.4014 |     0.3350 |     0.3108 |     0.3147 |
-| YOLOv8l + WiSDet |     0.4937 | **0.4200** |     0.3397 |     0.3049 |
-| FsDet + WiSDet   | **0.5050** |     0.3180 | **0.3400** | **0.3320** |
+| Model            |    31 shot |    10 shot |     5 shot |     2 shot | Weights |
+| ---------------- | ---------: | ---------: | ---------: | ---------: | ---------: |
+| YOLOv8n + WiSDet |     0.4014 |     0.3350 |     0.3108 |     0.3147 | GDrive |
+| YOLOv8l + WiSDet |     0.4937 | **0.4200** |     0.3397 |     0.3049 | GDrive  |
+| FsDet + WiSDet   | **0.5050** |     0.3180 | **0.3400** | **0.3320** | [GDrive](https://drive.google.com/drive/folders/1jvblA6Q2hafO_orcLZnCYj0F2jpHAd0s?usp=sharing) |
 
 - Adding WiSDet gives clear AP gains for every backbone and shot count.  
 - FsDet + WiSDet reaches the highest AP at 31, 5, and 2 shot, while YOLOv8l + WiSDet is best at 10 shot.  
@@ -129,11 +129,11 @@ Other settings follow the Ultralytics YOLOv8 defaults.
 
 
 ### Windshield Detector AP@50 Performance
-| Model   | AP@50 (windshield) |
-| ------- | -----------------: |
-| YOLOv8n |             0.8061 |
-| YOLOv8l |             0.8770 |
-| FsDet   |             0.9010 |
+| Model   | AP@50 (windshield) | Weights |
+| ------- | -----------------: | -------: | 
+| YOLOv8n |             0.8061 | GDrive  |
+| YOLOv8l |             0.8770 | GDrive |
+| FsDet   |             0.9010 | [GDrive](https://drive.google.com/drive/folders/1pPbuBOHWn4XN473DeUA5Q0cwrGTXy4ix?usp=sharing) |
 - Guide detectors were trained on the 31-shot dataset.
 - All guide detectors exceed 0.80 AP@50 on windshields, so the crop regions are reliable.  
 - FsDet gives the most accurate windshield boxes, followed closely by YOLOv8l.  
