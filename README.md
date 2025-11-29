@@ -1,5 +1,5 @@
-# Windshield-to-Sticker Detection (WiSDet)
-This repository contains the code used in the study **Few Shot Car Sticker Detection.** This study focuses on detecting tiny car stickers on images of cars with few annotated examples. A car sticker dataset was created through crowsourcing and this dataset serves as the training and testing data of this project.
+# Few-Shot Car Sticker Detection
+This repository contains the code used in the study **Few-Shot Car Sticker Detection.** This study focuses on detecting tiny car stickers on images of cars with few annotated examples. A car sticker dataset was created through crowsourcing and this dataset serves as the training and testing data of this project.
 
 A two stage guided detection pipeline called **WiSDet (Windshield-to-Sticker Detection)**, is proposed for detecting car stickers on windshields. This pipeline first detects windshields then focuses sticker detection within the region.
 
