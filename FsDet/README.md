@@ -85,7 +85,7 @@ Please make sure src1 arg is the path to base trained weights you would like to 
 To run WiSDet pipeline or inference on full-image similar to built-in evaluation .py file,
 ```
 python test_wscs_args.py \
-    --mode ws-cs \
+    --mode ws-then-cs \
     --ws-config configs/windshield.yaml \
     --ws-weights weights/windshield.pth \
     --cs-config configs/sticker.yaml \
@@ -102,7 +102,7 @@ python test_wscs_args.py \
 
 | Argument | Description |
 |----------|-------------|
-| `--mode` | `ws-cs` (pipeline) or `cs-only` (full-image detection) |
+| `--mode` | `ws-then-cs` (WiSDet pipeline) or `cs-only` (full-image detection) |
 | `--ws-config` | YAML config for windshield model |
 | `--ws-weights` | `.pth` weights for windshield model |
 | `--cs-config` | YAML config for sticker model |
