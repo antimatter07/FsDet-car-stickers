@@ -79,7 +79,7 @@ To initialize weights randomly befor few-shot fine tuning,
 ```
 python3 -m tools.ckpt_surgery --src1 checkpoints/base/coco/model_final.pth --method randinit --save-dir checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovel --stickers
 ```
-Please make sure src1 arg is the path to base trained weights you would like to use, and create a custom script for correctly mapping classes in `tools.ckpt_surgery.py` for your use case. In our experiments, base trained weights are weights base trained on COCO by original FsDet researchers found [here](http://dl.yf.io/fs-det/models/coco/base_model/).
+The argument `src1` is the path to base trained weights you would like to use, please make sure to create a custom script for correctly mapping classes in `tools.ckpt_surgery.py` for your use case. In our experiments, base trained weights are weights base trained on COCO by original FsDet researchers found [here](http://dl.yf.io/fs-det/models/coco/base_model/).
 
 ## Windshield-to-Sticker Detection (WiSDet)
 To run WiSDet pipeline or inference on full-image similar to built-in evaluation .py file,
