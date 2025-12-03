@@ -75,7 +75,7 @@ To evaluate on all saved weights saved with `CHECKPOINT_PERIOD`,
 python3 -m tools.test_net --num-gpus 1 --config-file configs/stickers-detection/stickers_only_31shot.yaml --eval-all
 ```
 
-To initialize weights randomly befor few-shot fine tuning,
+To initialize weights randomly before few-shot fine tuning,
 ```
 python3 -m tools.ckpt_surgery --src1 checkpoints/base/coco/model_final.pth --method randinit --save-dir checkpoints/coco/faster_rcnn/faster_rcnn_R_101_FPN_stickersnovel --stickers
 ```
