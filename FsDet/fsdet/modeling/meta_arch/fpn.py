@@ -387,7 +387,7 @@ class CBAMBlock(nn.Module):
         # Channel attention
         avg = torch.mean(x, dim=(2, 3), keepdim=True)
         mx = torch.max(x, dim=2, keepdim=True)[0]
-        mx = torch.max(mx, dim=3, keepdim=True)[0]  # ✅ torch 1.7 safe alternative
+        mx = torch.max(mx, dim=3, keepdim=True)[0]  #  torch 1.7 safe alternative
         ch_attn = torch.sigmoid(self.fc2(F.relu(self.fc1(avg + mx))))
         x = x * ch_attn
 
